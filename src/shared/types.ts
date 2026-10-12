@@ -3,7 +3,10 @@ export interface WoltParticipant {
   isHost: boolean;
   status: string;
   itemCount?: number;
+  /** Amount the participant is charged (after item discounts when known). */
   cents: number;
+  /** Price before discounts (struck-through price on checkout, item price on order history). */
+  originalCents: number;
 }
 
 export interface WoltFee {
@@ -12,10 +15,16 @@ export interface WoltFee {
 }
 
 export interface WoltOrder {
+  source: 'checkout' | 'history';
+  /** Group order id on checkout pages, order id on order history pages. */
+  orderId?: string;
   venue?: string;
+  placedAt?: string;
   currency: string;
   participants: WoltParticipant[];
   fees: WoltFee[];
+  /** Order-level discounts as negative amounts. */
+  discounts: WoltFee[];
   totalCents?: number;
   url?: string;
 }

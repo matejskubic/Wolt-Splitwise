@@ -83,7 +83,7 @@ describe('split', () => {
       { userId: 3, owedCents: 1195, paidCents: 0 },
     ]);
 
-    const payload = buildExpensePayload(result, { description: 'Wolt', currencyCode: 'EUR', groupId: 104554904, date: new Date('2026-10-12T12:00:00Z') });
+    const payload = buildExpensePayload(result, { description: 'Wolt', currencyCode: 'EUR', groupId: 104554904, categoryId: 25, date: new Date('2026-10-12T12:00:00Z') });
     expect(payload).toMatchObject({
       cost: '35.00',
       group_id: 104554904,

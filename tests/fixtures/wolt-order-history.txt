@@ -1,0 +1,92 @@
+Back to order history
+The BRGR
+Celovška cesta 185 , 1000, Ljubljana
++38664221122
+Order placed: 12/10/2026, 11:21
+Delivery
+Order Together
+Delivered
+Your order number: 652
+Order ID: 6acca6a76b439397dec49874
+Delivered to: Work
+Order delivered: 12/10/2026, 12:07
+Order again
+View venue info
+Items
+Matej Skubic
+HOST
+€12.39
+The Mustardo
+12.39
+×1
+12.39
+Zamenjamo krompirček za sladkega?: Ne, hvala
+Želiš cheddar zamenjati za nacho sir?: Ne, hvala
+Želiš dvojno meso in cheddar?: Ne, hvala
+Dodamo 2x chicken strips?: Ne, hvala
+Marko Tasevski
+€12.39
+The Mustardo
+12.39
+×1
+12.39
+Zamenjamo krompirček za sladkega?: Ne, hvala
+Želiš cheddar zamenjati za nacho sir?: Ne, hvala
+Želiš dvojno meso in cheddar?: Ne, hvala
+Dodamo 2x chicken strips?: Ne, hvala
+Ivan Batinić
+€12.39
+The Nostalgija
+12.39
+×1
+12.39
+Zamenjamo krompirček za sladkega?: Ne, hvala
+Želiš cheddar zamenjati za nacho sir?: Ne, hvala
+Želiš dvojno meso in cheddar?: Ne, hvala
+Dodamo 2x chicken strips?: Ne, hvala
+Dodamo omako za krompirček?: Ne, hvala
+Dodamo kaj pekočega?: Ne, hvala
+Dodamo zelenjavo?: Ne, hvala
+Kris Stopar
+€12.39
+The Plain
+12.39
+×1
+12.39
+Zamenjamo krompirček za sladkega?: Ne, hvala
+Želiš dvojno meso in cheddar?: Ne, hvala
+Dodamo 2x chicken strips?: Ne, hvala
+Tomi Bandelj
+€12.39
+The Classic
+12.39
+×1
+12.39
+Zamenjamo krompirček za sladkega?: Ne, hvala
+Želiš cheddar zamenjati za nacho sir?: Ne, hvala
+Želiš dvojno meso in cheddar?: Ne, hvala
+Dodamo 2x chicken strips?: Ne, hvala
+Dodamo omako za krompirček?: Ne, hvala
+Dodamo kaj pekočega?: Ne, hvala
+Dodamo zelenjavo?: Ne, hvala
+Vale
+€14.68
+The Classic
+14.68
+×1
+14.68
+Zamenjamo krompirček za sladkega?: Želim sladki krompirček
+ +1.00
+Želiš cheddar zamenjati za nacho sir?: Ne, hvala
+Želiš dvojno meso in cheddar?: Ne, hvala
+Dodamo 2x chicken strips?: Ne, hvala
+Dodamo omako za krompirček?: Truffle mayo
+ +1.29
+DeliveryWork	0.00
+Service fee
+2.07
+Discounts
+-18.60
+
+Total sum
+€60.10

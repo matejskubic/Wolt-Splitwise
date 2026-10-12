@@ -13,7 +13,7 @@ const MONEY = String.raw`(?:([-−])?(${CURRENCY})\s?(${AMOUNT})|(${AMOUNT})\s?(
 const MONEY_LINE_RE = new RegExp(String.raw`^${MONEY}$`);
 const MONEY_ANYWHERE_RE = new RegExp(MONEY, 'g');
 
-function amountToCents(raw: string): number {
+export function amountToCents(raw: string): number {
   const text = raw.replace('−', '-').trim();
   const negative = text.startsWith('-');
   const decimals = /[.,](\d{1,2})$/.exec(text);

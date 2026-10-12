@@ -6,6 +6,7 @@ export interface Settings {
   consumerSecret: string;
   groupId?: number;
   groupName?: string;
+  categoryId: number;
   /** When set, create_expense is POSTed here (without the access token) instead of the Splitwise API. */
   testEndpoint: string;
   /** Normalized Wolt name -> Splitwise user id. */
@@ -25,6 +26,9 @@ export const DEFAULT_SETTINGS: Settings = {
   tokenUrl: 'https://secure.splitwise.com/oauth/token',
   consumerKey: '',
   consumerSecret: '',
+  
+  // Food and drink
+  categoryId: 25,
   testEndpoint: '',
   nameMappings: {},
   ...(typeof __BUILD_DEFAULTS__ === 'undefined' ? {} : __BUILD_DEFAULTS__),

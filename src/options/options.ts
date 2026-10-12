@@ -2,6 +2,7 @@ import { clearAuth, extraOrigins, getAuth, getSettings, saveAuth, saveSettings, 
 import { SplitwiseClient, type SplitwiseGroup } from '../shared/splitwise';
 import type { OAuthRequest, OAuthResponse } from '../shared/types';
 import { memberDisplayName } from '../shared/names';
+import splitSchema from '../split.schema.json';
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
@@ -166,6 +167,31 @@ bind('clear-mappings', async () => {
   await saveSettings({ nameMappings: {} });
   $('mapping-count').textContent = '0';
 });
+
+const schemaText = JSON.stringify(splitSchema, null, 2);
+const aiPrompt = [
+  'The attached screenshot shows the "Participants" list of a Wolt group order checkout page.',
+  'For every participant, return the amount they pay after item discounts and before service or delivery fees.',
+  'Use the highlighted (current) price of each participant, not the struck-through original price.',
+  'Copy the names exactly as written. Use a dot as the decimal separator and no currency symbol.',
+  'Answer with JSON only, no explanation, matching this JSON schema:',
+  '',
+  schemaText,
+].join('\n');
+$('ai-prompt').textContent = aiPrompt;
+$('split-schema').textContent = schemaText;
+
+async function copy(text: string, label: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    $('copy-status').textContent = `${label} copied.`;
+  } catch (error) {
+    $('copy-status').textContent = `Copy failed: ${errorText(error)}`;
+  }
+}
+
+$('copy-prompt').addEventListener('click', () => void copy(aiPrompt, 'Prompt'));
+$('copy-schema').addEventListener('click', () => void copy(schemaText, 'Schema'));
 
 void (async () => {
   await loadForm();

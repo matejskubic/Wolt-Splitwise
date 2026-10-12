@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Wolt SplitWise Schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "name",
+      "amount"
+    ]
+  }
+}

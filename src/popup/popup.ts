@@ -1,7 +1,9 @@
 import { centsToDecimal, decimalToCents, formatMoney } from '../shared/money';
 import { matchMember, memberDisplayName, normalizeName, type SplitwiseMember } from '../shared/names';
+import { applyCheckoutDiscounts, listCheckoutSnapshots, rankSnapshots, saveCheckoutSnapshot, snapshotFromAmounts, type CheckoutSnapshot } from '../shared/orders';
 import { extraOrigins, getAuth, getSettings, saveSettings, type AuthState, type Settings } from '../shared/settings';
 import { buildExpensePayload, computeShares, distribute } from '../shared/split';
+import { parseSplitInput } from '../shared/splitInput';
 import { SplitwiseClient, type SplitwiseGroup } from '../shared/splitwise';
 import type { CaptureRequest, CaptureResponse, WoltOrder, WoltParticipant } from '../shared/types';
 
@@ -22,7 +24,13 @@ interface FeeRow {
 interface State {
   settings: Settings;
   auth: AuthState;
+  /** Order as read from the page. */
+  capturedOrder: WoltOrder;
+  /** Order after applying discounts from the selected checkout snapshot. */
   order: WoltOrder;
+  snapshots: CheckoutSnapshot[];
+  client: SplitwiseClient;
+  groups: SplitwiseGroup[];
   group: SplitwiseGroup;
   me: SplitwiseMember;
   rows: Row[];
@@ -151,49 +159,162 @@ function addFeeRow(state: State, label: string, cents: number): void {
   $('fees').append(tr);
 }
 
-function hostUserId(state: State): number | undefined {
-  return state.rows.find((row) => row.participant.isHost)?.userId;
+function syncPayer(state: State): void {
+  if (state.payerTouched) return;
+  const payer = $<HTMLSelectElement>('payer');
+  const id = state.rows.find((row) => row.participant.isHost)?.userId ?? state.me.id;
+  payer.value = state.group.members.some((member) => member.id === id) ? String(id) : '';
 }
 
-function render(state: State): void {
-  const { order, group, settings, me } = state;
+/** (Re)builds the participant and fee tables from `state.order`, keeping member picks made so far. */
+function renderOrder(state: State): void {
+  const { order, group, settings } = state;
   const members = group.members;
-
-  $<HTMLInputElement>('description').value = `Wolt${order.venue ? ` – ${order.venue}` : ''}`;
-  $('group-info').textContent = `Group: ${group.name} · ${order.participants.length} ready participant(s)`;
-  $('mode').textContent = settings.testEndpoint ? `Test mode → ${new URL(settings.testEndpoint).host}` : '';
-
-  const payer = $<HTMLSelectElement>('payer');
-  const syncPayer = (): void => {
-    if (state.payerTouched) return;
-    const id = hostUserId(state) ?? me.id;
-    payer.value = members.some((member) => member.id === id) ? String(id) : '';
-  };
+  const picked = new Map(state.rows.map((row) => [normalizeName(row.participant.name), row.userId]));
 
   const tbody = $('participants');
+  tbody.replaceChildren();
+  state.rows = [];
   for (const participant of order.participants) {
+    const key = normalizeName(participant.name);
+    const previous = picked.get(key);
+    const userId = previous !== undefined && members.some((member) => member.id === previous) ? previous : matchMember(participant.name, members, settings.nameMappings);
     const tr = document.createElement('tr');
-    const userId = matchMember(participant.name, members, settings.nameMappings);
     const nameCell = cell(participant.name);
     if (participant.isHost) nameCell.append(Object.assign(document.createElement('span'), { className: 'badge', textContent: 'HOST' }));
     const select = memberSelect(members, userId, '— pick member —');
     const selectCell = cell();
     selectCell.append(select);
+    const discount = participant.originalCents - participant.cents;
     const row: Row = { participant, userId, feeCell: cell('', 'num'), owesCell: cell('', 'num'), element: tr };
-    tr.append(nameCell, selectCell, cell(centsToDecimal(participant.cents), 'num'), row.feeCell, row.owesCell);
+    tr.append(
+      nameCell,
+      selectCell,
+      cell(centsToDecimal(participant.originalCents), 'num'),
+      cell(discount ? `−${centsToDecimal(discount)}` : '', 'num'),
+      row.feeCell,
+      row.owesCell,
+    );
     select.addEventListener('change', () => {
       row.userId = select.value ? Number(select.value) : undefined;
-      syncPayer();
+      syncPayer(state);
       update(state);
     });
     state.rows.push(row);
     tbody.append(tr);
   }
 
+  $('fees').replaceChildren();
+  state.fees = [];
   for (const fee of order.fees) addFeeRow(state, fee.label, fee.cents);
 
-  payer.replaceChildren(...memberSelect(members, undefined, '— payer —').options);
-  syncPayer();
+  syncPayer(state);
+  update(state);
+}
+
+function snapshotLabel(snapshot: CheckoutSnapshot): string {
+  const when = new Date(snapshot.capturedAt).toLocaleString();
+  return `${snapshot.venue ?? 'Wolt'} · ${when} · ${snapshot.participants.length} people`;
+}
+
+function applySnapshot(state: State, snapshot: CheckoutSnapshot | undefined): void {
+  const result = applyCheckoutDiscounts(state.capturedOrder, snapshot);
+  state.order = result.order;
+  const { currency } = state.order;
+  const notes: string[] = [];
+  if (snapshot) notes.push(`${formatMoney(result.snapshotCents, currency)} discount assigned per person from the checkout saved ${new Date(snapshot.capturedAt).toLocaleString()}.`);
+  if (result.proportionalCents) notes.push(`${formatMoney(result.proportionalCents, currency)} split proportionally to item prices (not explained by a saved checkout).`);
+  if (result.unmatchedNames.length) notes.push(`Not in the saved checkout: ${result.unmatchedNames.join(', ')}.`);
+  if (!notes.length) notes.push('No discounts on this order.');
+  $('discount-info').textContent = notes.join(' ');
+  renderOrder(state);
+}
+
+/** Fills the snapshot dropdown, best match first; selects `selectedId`, or the best match when omitted. */
+function fillSnapshotSelect(state: State, selectedId?: string): CheckoutSnapshot[] {
+  const ranked = rankSnapshots(state.capturedOrder, state.snapshots);
+  const select = $<HTMLSelectElement>('snapshot');
+  select.replaceChildren(new Option('None – split the order discount proportionally', ''));
+  for (const snapshot of ranked) select.append(new Option(snapshotLabel(snapshot), snapshot.id));
+  const id = selectedId ?? ranked[0]?.id;
+  select.value = ranked.some((snapshot) => snapshot.id === id) ? id! : '';
+  return ranked;
+}
+
+async function applyPastedAmounts(state: State): Promise<void> {
+  const status = $('paste-status');
+  try {
+    const amounts = parseSplitInput($<HTMLTextAreaElement>('paste-input').value);
+    const snapshot = snapshotFromAmounts(state.capturedOrder, amounts);
+    await saveCheckoutSnapshot(snapshot);
+    state.snapshots = [snapshot, ...state.snapshots.filter((item) => item.id !== snapshot.id)];
+    fillSnapshotSelect(state, snapshot.id);
+    applySnapshot(state, snapshot);
+    const known = new Set(state.capturedOrder.participants.map((participant) => normalizeName(participant.name)));
+    const unknown = amounts.filter((amount) => !known.has(normalizeName(amount.name))).map((amount) => amount.name);
+    status.textContent = unknown.length ? `Applied, but not on this order: ${unknown.join(', ')}.` : `Applied ${amounts.length} amount(s) and saved them for this order.`;
+    status.className = `status ${unknown.length ? 'warn' : 'ok'}`;
+  } catch (error) {
+    status.textContent = errorText(error);
+    status.className = 'status error';
+  }
+}
+
+function setupHistoryDiscounts(state: State): void {
+  const ranked = fillSnapshotSelect(state);
+  const select = $<HTMLSelectElement>('snapshot');
+  select.addEventListener('change', () => applySnapshot(state, state.snapshots.find((snapshot) => snapshot.id === select.value)));
+  $('paste-apply').addEventListener('click', () => void applyPastedAmounts(state));
+  $('discount-box').classList.remove('hidden');
+  applySnapshot(state, ranked[0]);
+}
+
+function fillPayer(state: State): void {
+  const payer = $<HTMLSelectElement>('payer');
+  const previous = payer.value;
+  payer.replaceChildren(...memberSelect(state.group.members, undefined, '— payer —').options);
+  if (state.payerTouched && state.group.members.some((member) => String(member.id) === previous)) payer.value = previous;
+  else state.payerTouched = false;
+}
+
+function describeGroup(state: State): void {
+  const { order, group } = state;
+  const source = order.source === 'history' ? `order ${order.placedAt ?? order.orderId ?? ''}`.trim() : 'ready participant(s)';
+  $('group-info').textContent = `${group.members.length} members in ${group.name} · ${order.participants.length} people on Wolt · ${source}`;
+}
+
+function setupGroupSelect(state: State): void {
+  const select = $<HTMLSelectElement>('group-select');
+  const groups = state.groups.some((group) => group.id === state.group.id) ? state.groups : [state.group, ...state.groups];
+  select.replaceChildren(...groups.map((group) => new Option(group.id === state.settings.groupId ? `${group.name} (default)` : group.name, String(group.id))));
+  select.value = String(state.group.id);
+  select.addEventListener('change', () => {
+    void (async () => {
+      select.disabled = true;
+      try {
+        state.group = await state.client.getGroup(Number(select.value));
+        fillPayer(state);
+        describeGroup(state);
+        renderOrder(state);
+      } catch (error) {
+        showStatus(`Could not load the group: ${errorText(error)}`, 'error');
+        select.value = String(state.group.id);
+      } finally {
+        select.disabled = false;
+      }
+    })();
+  });
+}
+
+function setup(state: State): void {
+  const { order, settings } = state;
+  $<HTMLInputElement>('description').value = `Wolt${order.venue ? ` – ${order.venue}` : ''}`;
+  describeGroup(state);
+  setupGroupSelect(state);
+  $('mode').textContent = settings.testEndpoint ? `Test mode → ${new URL(settings.testEndpoint).host}` : '';
+
+  const payer = $<HTMLSelectElement>('payer');
+  fillPayer(state);
   payer.addEventListener('change', () => {
     state.payerTouched = true;
     update(state);
@@ -204,10 +325,12 @@ function render(state: State): void {
   });
   $('description').addEventListener('input', () => update(state));
 
+  if (order.source === 'history') setupHistoryDiscounts(state);
+  else renderOrder(state);
+
   $('review').classList.remove('hidden');
   const unmatched = state.rows.filter((row) => row.userId === undefined).length;
   showStatus(unmatched ? `Match ${unmatched} Wolt name(s) to Splitwise members, review, then send.` : 'Review the split, then send.', unmatched ? 'warn' : '');
-  update(state);
 }
 
 async function send(state: State, permission: Promise<boolean>): Promise<void> {
@@ -222,7 +345,11 @@ async function send(state: State, permission: Promise<boolean>): Promise<void> {
     const result = computeShares(items, fees.total, payerId);
     const feeLines = state.fees.map((fee) => `${fee.label.value.trim() || 'Fee'}: ${fee.amount.value}`);
     const details = [
-      ...state.rows.map((row, index) => `${row.participant.name}: ${centsToDecimal(row.participant.cents)} + ${centsToDecimal(result.feeShares[index] ?? 0)} fees`),
+      ...state.rows.map((row, index) => {
+        const { name, cents, originalCents } = row.participant;
+        const discount = originalCents > cents ? ` - ${centsToDecimal(originalCents - cents)} discount` : '';
+        return `${name}: ${centsToDecimal(originalCents)}${discount} + ${centsToDecimal(result.feeShares[index] ?? 0)} fees`;
+      }),
       ...(feeLines.length ? ['', ...feeLines] : []),
       ...(order.url ? ['', order.url] : []),
     ].join('\n');
@@ -230,6 +357,7 @@ async function send(state: State, permission: Promise<boolean>): Promise<void> {
       description: $<HTMLInputElement>('description').value.trim(),
       details,
       currencyCode: order.currency,
+      categoryId: settings.categoryId,
       groupId: group.id,
     });
 
@@ -262,16 +390,22 @@ async function main(): Promise<void> {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url || !/^https:\/\/wolt\.com\//.test(tab.url)) {
-    return showStatus('Open the Wolt group order checkout page and click the extension again.', 'warn');
+    return showStatus('Open a Wolt group order checkout or an order history page and click the extension again.', 'warn');
   }
 
-  showStatus('Reading the Wolt group order…');
+  showStatus('Reading the Wolt order…');
   const client = new SplitwiseClient(settings.apiBaseUrl, auth.accessToken);
-  const [order, group, me] = await Promise.all([captureOrder(tab.id), client.getGroup(settings.groupId), client.getCurrentUser()]);
-  if (!order.participants.length) return showStatus('No ready participants were found on this page.', 'warn');
+  const [order, group, me, snapshots, groups] = await Promise.all([
+    captureOrder(tab.id),
+    client.getGroup(settings.groupId),
+    client.getCurrentUser(),
+    listCheckoutSnapshots(),
+    client.getGroups().catch((): SplitwiseGroup[] => []),
+  ]);
+  if (!order.participants.length) return showStatus('No participants were found on this page.', 'warn');
 
-  const state: State = { settings, auth, order, group, me, rows: [], fees: [], payerTouched: false };
-  render(state);
+  const state: State = { settings, auth, capturedOrder: order, order, snapshots, client, groups, group, me, rows: [], fees: [], payerTouched: false };
+  setup(state);
 
   $('review').addEventListener('submit', (event) => {
     event.preventDefault();

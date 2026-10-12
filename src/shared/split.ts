@@ -27,6 +27,23 @@ export function distribute(totalCents: number, parts: number): number[] {
   return Array.from({ length: parts }, (_, index) => sign * (base + (index < remainder ? 1 : 0)));
 }
 
+/** Splits an amount proportionally to the weights (largest remainder), so the parts sum exactly to the amount. */
+export function distributeProportionally(totalCents: number, weights: number[]): number[] {
+  const weightSum = weights.reduce((sum, weight) => sum + Math.max(weight, 0), 0);
+  if (weightSum <= 0) return distribute(totalCents, weights.length);
+  const sign = totalCents < 0 ? -1 : 1;
+  const abs = Math.abs(totalCents);
+  const exact = weights.map((weight) => (abs * Math.max(weight, 0)) / weightSum);
+  const parts = exact.map(Math.floor);
+  let remainder = abs - parts.reduce((sum, part) => sum + part, 0);
+  const order = exact.map((value, index) => ({ index, fraction: value - Math.floor(value) })).sort((a, b) => b.fraction - a.fraction);
+  for (const { index } of order) {
+    if (remainder-- <= 0) break;
+    parts[index]! += 1;
+  }
+  return parts.map((part) => sign * part);
+}
+
 /** Computes per-user owed shares (items + equal fee portion per participant); the payer covers the whole total. */
 export function computeShares(items: ShareInput[], feeCents: number, payerId: number): ShareResult {
   const feeShares = distribute(feeCents, items.length);
@@ -50,6 +67,7 @@ export interface ExpenseMeta {
   details?: string;
   currencyCode: string;
   groupId: number;
+  categoryId: number;
   date?: Date;
 }
 
@@ -60,6 +78,7 @@ export function buildExpensePayload(result: ShareResult, meta: ExpenseMeta): Rec
     currency_code: meta.currencyCode,
     group_id: meta.groupId,
     date: (meta.date ?? new Date()).toISOString(),
+    category_id: meta.categoryId,
   };
   if (meta.details) payload.details = meta.details;
   result.shares.forEach((share, index) => {

@@ -16,7 +16,7 @@ body {
 }
 
 body.popup {
-  width: 560px;
+  width: 640px;
   max-height: 580px;
 }
 
@@ -61,7 +61,8 @@ label > span {
 }
 
 input,
-select {
+select,
+textarea {
   font: inherit;
   padding: 4px 6px;
   border: 1px solid var(--border);
@@ -72,8 +73,27 @@ select {
 }
 
 input.wide,
-select.wide {
+select.wide,
+textarea.wide {
   width: 100%;
+}
+
+textarea {
+  font-family: ui-monospace, Consolas, monospace;
+  resize: vertical;
+}
+
+pre {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+details summary {
+  cursor: pointer;
+  margin: 6px 0;
 }
 
 input.amount {

@@ -14,7 +14,19 @@
 
     <form id="review" class="hidden">
       <label><span>Description</span><input id="description" class="wide" required maxlength="120" /></label>
+      <label><span>Splitwise group</span><select id="group-select" class="wide"></select></label>
       <div class="muted" id="group-info"></div>
+
+      <div id="discount-box" class="hidden">
+        <label><span>Per-person discounts from a saved checkout</span><select id="snapshot" class="wide"></select></label>
+        <div id="discount-info" class="muted"></div>
+        <details id="paste-box">
+          <summary>Paste split amounts (CSV or JSON, after discounts, before fees)</summary>
+          <textarea id="paste-input" class="wide" rows="5" placeholder='Matej Skubic,8.67&#10;Miha Boh,9.67&#10;&#10;or [{"name": "Matej Skubic", "amount": 8.67}]'></textarea>
+          <div class="row"><button type="button" id="paste-apply">Apply pasted amounts</button></div>
+          <div id="paste-status" class="status hidden"></div>
+        </details>
+      </div>
 
       <h2>Participants</h2>
       <table>
@@ -23,6 +35,7 @@
             <th>Wolt</th>
             <th>Splitwise member</th>
             <th class="num">Items</th>
+            <th class="num">Discount</th>
             <th class="num">Fees</th>
             <th class="num">Owes</th>
           </tr>

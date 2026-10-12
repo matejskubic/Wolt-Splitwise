@@ -58,6 +58,35 @@
       <div id="advanced-status" class="status hidden"></div>
     </fieldset>
 
+    <fieldset>
+      <legend>Forgot to open the checkout page? Read discounts from a screenshot with AI</legend>
+      <p>
+        Per-person discounts are only shown on the group order checkout page (with the <strong>Ready</strong> tab selected). The order history page only
+        shows full prices and one total discount. If you have a screenshot of the checkout page, an AI assistant can turn it into per-person amounts:
+      </p>
+      <ol>
+        <li>Take a screenshot of the <strong>Participants</strong> list on the checkout page (e.g. <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>).</li>
+        <li>Open an AI chat that accepts images (Copilot, ChatGPT, …), paste the screenshot and the prompt below.</li>
+        <li>Copy the JSON answer, open the order on <em>wolt.com → Profile → Order history</em>, click the extension and paste it under <strong>Paste split amounts</strong>.</li>
+      </ol>
+      <p class="muted">
+        Each amount is what the participant pays after item discounts and <strong>before</strong> service/delivery fees – the highlighted price, not the
+        struck-through one (e.g. <code>€8.67</code>, not <code>12.39</code>). Fees are taken from the order history page and split across everyone.
+        CSV such as <code>Matej Skubic,8.67</code> (one person per line) works too.
+      </p>
+
+      <h2>Prompt</h2>
+      <pre id="ai-prompt"></pre>
+      <div class="row"><button id="copy-prompt">Copy prompt</button></div>
+
+      <h2>JSON schema</h2>
+      <pre id="split-schema"></pre>
+      <div class="row">
+        <button id="copy-schema">Copy schema</button>
+        <span id="copy-status" class="muted"></span>
+      </div>
+    </fieldset>
+
     <script src="options.js"></script>
   </body>
 </html>

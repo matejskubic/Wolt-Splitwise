@@ -1,4 +1,4 @@
-import { extractTrailingMoney, parseMoneyLine, type Money } from '../shared/money';
+import { amountToCents, extractTrailingMoney, parseMoneyLine, type Money } from '../shared/money';
 import type { WoltFee, WoltOrder, WoltParticipant } from '../shared/types';
 
 const STATUS_RE = /^(ready|not started|not ready|in progress|ordering|browsing|joined|done)(?:\s*[•·]\s*(\d+)\s+items?)?$/i;
@@ -15,7 +15,10 @@ const FEE_RE = /\b(delivery|service|small order|surcharge|bag|packaging|fee)\b/i
 const FEE_EXCLUDE_RE = /\b(subtotal|total|discount|tip|promo|credits?|time|address|estimate|minutes?|min|free delivery|pickup|order together)\b/i;
 const TOTAL_RE = /^total(?:\s+(?:sum|price|amount))?$/i;
 const LABEL_STOP_RE = /\b(subtotal|total|applied offers|offers?|discounts?)\b/i;
+const DISCOUNT_LABEL_RE = /^(applied offers|discounts?\d*|offers|promo(?:tion)?s?|credits?)$/i;
+const DISCOUNT_WORD_RE = /\b(discounts?|offers?|promo|credits?|vouchers?)\b/i;
 const AMOUNT_LOOKAHEAD = 5;
+const READY_STATUS_RE = /^ready$/i;
 
 export function splitLines(text: string): string[] {
   return text
@@ -77,16 +80,20 @@ export function parseParticipants(lines: string[]): { participants: WoltParticip
     const hostBadge = section.slice(nameIndex + 1, statusIndex).some((line) => HOST_RE.test(line));
     const following = section.slice(statusIndex + 1, next);
     const itemLine = following.find((line) => ITEM_RE.test(line));
-    const priceLine = following.map((line) => parseMoneyLine(line)).find((money) => money !== null);
-    if (!priceLine) return;
+    const priceIndex = following.findIndex((line) => parseMoneyLine(line) !== null);
+    if (priceIndex < 0) return;
+    const price = parseMoneyLine(following[priceIndex])!;
+    const struckThrough = following[priceIndex + 1];
+    const original = struckThrough && PLAIN_NUMBER_RE.test(struckThrough) ? amountToCents(struckThrough) : price.cents;
 
-    currency ??= priceLine.currency;
+    currency ??= price.currency;
     participants.push({
       name: rawName.replace(HOST_SUFFIX_RE, '').trim(),
       isHost: hostBadge || HOST_SUFFIX_RE.test(rawName),
       status: statusMatch[1]!,
       itemCount: Number(statusMatch[2] ?? (itemLine ? ITEM_RE.exec(itemLine)?.[1] : undefined)) || undefined,
-      cents: priceLine.cents,
+      cents: price.cents,
+      originalCents: Math.max(original, price.cents),
     });
   });
 
@@ -108,16 +115,25 @@ export function parseFees(lines: string[]): WoltFee[] {
   return fees;
 }
 
+export function parseDiscounts(lines: string[]): WoltFee[] {
+  const discounts: WoltFee[] = [];
+  lines.forEach((line, index) => {
+    if (!DISCOUNT_LABEL_RE.test(line)) return;
+    const money = parseMoneyLine(lines[index + 1]);
+    if (money && money.cents !== 0) discounts.push({ label: line, cents: -Math.abs(money.cents) });
+  });
+  return discounts;
+}
+
+/** Returns the last total on the page; the checkout also shows a "Total sum" for the host's own basket earlier. */
 export function parseTotal(lines: string[]): number | undefined {
+  let total: number | undefined;
   for (const [index, line] of lines.entries()) {
     const inline = extractTrailingMoney(line);
-    if (inline && TOTAL_RE.test(inline.label)) return inline.money.cents;
-    if (TOTAL_RE.test(line)) {
-      const money = findAmountAfter(lines, index);
-      if (money) return money.cents;
-    }
+    if (inline && TOTAL_RE.test(inline.label)) total = inline.money.cents;
+    else if (TOTAL_RE.test(line)) total = findAmountAfter(lines, index)?.cents ?? total;
   }
-  return undefined;
+  return total;
 }
 
 export function parseVenue(lines: string[], title = ''): string | undefined {
@@ -130,14 +146,101 @@ export function parseVenue(lines: string[], title = ''): string | undefined {
   return undefined;
 }
 
+/** Parses the group order checkout page; only participants with status "Ready" are returned. */
 export function parseWoltCheckout(text: string, title = ''): WoltOrder {
   const lines = splitLines(text);
   const { participants, currency } = parseParticipants(lines);
   return {
+    source: 'checkout',
     venue: parseVenue(lines, title),
     currency: currency ?? 'EUR',
-    participants,
+    participants: participants.filter((participant) => READY_STATUS_RE.test(participant.status)),
     fees: parseFees(lines),
+    discounts: parseDiscounts(lines),
     totalCents: parseTotal(lines),
   };
+}
+
+const HISTORY_AMOUNT_RE = /^[-−]?\d+(?:[.,]\d{1,2})?$/;
+const HISTORY_INLINE_RE = /^(.*?\D)\s+([-−]?\d+(?:[.,]\d{1,2})?)$/;
+const QUANTITY_RE = /^[×x]\s?\d+$/i;
+
+function historyAmount(line: string | undefined): number | null {
+  if (!line) return null;
+  const money = parseMoneyLine(line);
+  if (money) return money.cents;
+  return HISTORY_AMOUNT_RE.test(line) ? amountToCents(line) : null;
+}
+
+/** Reads the label/amount rows (delivery, service fee, discounts) that sit between the last item and the total. */
+function parseHistoryCharges(lines: string[], start: number, totalIndex: number): { rows: WoltFee[]; firstIndex: number } {
+  const rows: WoltFee[] = [];
+  let index = totalIndex - 1;
+  while (index > start) {
+    const line = lines[index]!;
+    let label: string | undefined;
+    let cents: number;
+    let consumed: number;
+    const amount = historyAmount(line);
+    if (amount !== null) {
+      label = lines[index - 1];
+      cents = amount;
+      consumed = 2;
+    } else {
+      const inline = HISTORY_INLINE_RE.exec(line);
+      if (!inline) break;
+      label = inline[1];
+      cents = amountToCents(inline[2]!);
+      consumed = 1;
+    }
+    if (!label || label.includes('?:') || QUANTITY_RE.test(label) || historyAmount(label) !== null || label.startsWith('+')) break;
+    rows.unshift({ label: label.replace(/^(Delivery)(?=\p{Lu})/u, '$1 – '), cents });
+    index -= consumed;
+  }
+  return { rows, firstIndex: index + 1 };
+}
+
+/** Parses a past order on wolt.com/…/me/order-history/<id>. Prices there are before item discounts. */
+export function parseWoltHistory(text: string): WoltOrder {
+  const lines = splitLines(text);
+  const backIndex = lines.findIndex((line) => /^back to order history$/i.test(line));
+  const orderId = lines.map((line) => /^order id:\s*(\S+)/i.exec(line)?.[1]).find(Boolean);
+  const placedAt = lines.map((line) => /^order placed:\s*(.+)$/i.exec(line)?.[1]).find(Boolean);
+  const itemsIndex = lines.findIndex((line) => /^items$/i.test(line));
+  let totalIndex = -1;
+  lines.forEach((line, index) => {
+    if (index > itemsIndex && TOTAL_RE.test(line)) totalIndex = index;
+  });
+
+  const order: WoltOrder = {
+    source: 'history',
+    orderId,
+    placedAt,
+    venue: backIndex >= 0 ? lines[backIndex + 1] : undefined,
+    currency: 'EUR',
+    participants: [],
+    fees: [],
+    discounts: [],
+    totalCents: totalIndex >= 0 ? (findAmountAfter(lines, totalIndex)?.cents ?? undefined) : undefined,
+  };
+  if (itemsIndex < 0 || totalIndex < 0) return order;
+
+  const { rows, firstIndex } = parseHistoryCharges(lines, itemsIndex, totalIndex);
+  for (const row of rows) {
+    if (row.cents < 0 || DISCOUNT_WORD_RE.test(row.label)) order.discounts.push({ label: row.label, cents: -Math.abs(row.cents) });
+    else if (row.cents > 0) order.fees.push(row);
+  }
+
+  for (let index = itemsIndex + 1; index < firstIndex; index++) {
+    const line = lines[index]!;
+    if (!isNameCandidate(line) || line.includes('?:')) continue;
+    const isHost = HOST_RE.test(lines[index + 1] ?? '');
+    const price = parseMoneyLine(lines[index + (isHost ? 2 : 1)]);
+    if (!price) continue;
+    order.currency = price.currency;
+    order.participants.push({ name: line, isHost, status: 'Ready', cents: price.cents, originalCents: price.cents });
+  }
+  const totalLine = lines[totalIndex + 1];
+  if (order.totalCents === undefined && totalLine) order.totalCents = historyAmount(totalLine) ?? undefined;
+  return order;
 }
