@@ -10,8 +10,10 @@
     "build:dev": "tsx scripts/build.ts --dev",
     "watch": "tsx scripts/build.ts --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "package": "pwsh -NoProfile -File scripts/package.ps1"
+    "test": "vitest run --dir tests",
+    "package": "pwsh -NoProfile -File scripts/package.ps1",
+    "worker:test": "pnpm --dir worker run test",
+    "worker:deploy": "pnpm --dir worker run deploy"
   },
   "devDependencies": {
     "@types/chrome": "^0.3.5",

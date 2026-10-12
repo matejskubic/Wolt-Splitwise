@@ -22,15 +22,11 @@ async function readEnvFile(path: string): Promise<Record<string, string>> {
   return values;
 }
 
-// Only non-secret values from .env are baked into dev builds; the consumer secret is entered in the options page.
+// Only non-secret values from .env are baked into dev builds.
 async function buildDefaults(): Promise<Record<string, string | number>> {
   if (!dev) return {};
   const env = await readEnvFile(join(root, '.env'));
   const defaults: Record<string, string | number> = {};
-  if (env.SplitWiseApiEndpoint) defaults.testEndpoint = env.SplitWiseApiEndpoint;
-  if (env.SplitWiseConsumerKey) defaults.consumerKey = env.SplitWiseConsumerKey;
-  if (env.SplitWiseTokenUrl) defaults.tokenUrl = env.SplitWiseTokenUrl;
-  if (env.SplitWiseAuthorizeUrl) defaults.authorizeUrl = env.SplitWiseAuthorizeUrl;
   const groupId = Number(env.SplitWiseGroupId);
   if (Number.isInteger(groupId) && groupId > 0) defaults.groupId = groupId;
   return defaults;

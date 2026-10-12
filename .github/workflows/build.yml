@@ -38,6 +38,13 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Auth worker typecheck and test
+        working-directory: worker
+        run: |
+          pnpm types
+          pnpm typecheck
+          pnpm test
+
       - name: Build
         run: pnpm build
 
@@ -60,6 +67,40 @@ jobs:
           name: wolt-splitwise-${{ steps.package.outputs.version }}
           path: artifacts/*.zip
           if-no-files-found: error
+
+  deploy-worker:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: cloudflare-worker
+    concurrency:
+      group: deploy-worker
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The consumer secret stays in Cloudflare; everything else comes from the cloudflare-worker environment.
+      - name: Deploy auth worker
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          SPLITWISE_CONSUMER_KEY: ${{ vars.SPLITWISE_CONSUMER_KEY }}
+        run: |
+          : "${CLOUDFLARE_API_TOKEN:?Set the CLOUDFLARE_API_TOKEN secret in the cloudflare-worker environment}"
+          : "${CLOUDFLARE_ACCOUNT_ID:?Set the CLOUDFLARE_ACCOUNT_ID variable in the cloudflare-worker environment}"
+          : "${SPLITWISE_CONSUMER_KEY:?Set the SPLITWISE_CONSUMER_KEY variable in the cloudflare-worker environment}"
+          pnpm exec wrangler deploy --var "SplitwiseConsumerKey:${SPLITWISE_CONSUMER_KEY}"
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

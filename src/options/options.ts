@@ -1,4 +1,4 @@
-import { clearAuth, extraOrigins, getAuth, getSettings, saveAuth, saveSettings, type Settings } from '../shared/settings';
+import { clearAuth, getAuth, getSettings, saveAuth, saveSettings, type Settings } from '../shared/settings';
 import { SplitwiseClient, type SplitwiseGroup } from '../shared/splitwise';
 import type { OAuthRequest, OAuthResponse } from '../shared/types';
 import { memberDisplayName } from '../shared/names';
@@ -20,13 +20,13 @@ function showStatus(id: string, message: string, kind: 'ok' | 'error' | 'warn' |
 }
 
 async function refreshAuthStatus(): Promise<void> {
-  const [settings, auth] = await Promise.all([getSettings(), getAuth()]);
+  const auth = await getAuth();
   if (!auth) {
     showStatus('auth-status', 'Not connected to Splitwise.', 'warn');
     return;
   }
   try {
-    const me = await new SplitwiseClient(settings.apiBaseUrl, auth.accessToken).getCurrentUser();
+    const me = await new SplitwiseClient(auth.accessToken).getCurrentUser();
     showStatus('auth-status', `Connected as ${memberDisplayName(me)} (${auth.method === 'oauth' ? 'OAuth' : 'API key'}).`, 'ok');
   } catch (error) {
     showStatus('auth-status', `Stored credentials could not be verified: ${errorText(error)}`, 'error');
@@ -55,7 +55,7 @@ async function loadGroups(): Promise<void> {
   loadedGroups = [];
   if (auth) {
     try {
-      loadedGroups = await new SplitwiseClient(settings.apiBaseUrl, auth.accessToken).getGroups();
+      loadedGroups = await new SplitwiseClient(auth.accessToken).getGroups();
       $('group-status').classList.add('hidden');
     } catch (error) {
       showStatus('group-status', `Could not load groups: ${errorText(error)}`, 'error');
@@ -68,14 +68,7 @@ async function loadGroups(): Promise<void> {
 
 async function loadForm(): Promise<void> {
   const settings = await getSettings();
-  input('consumer-key').value = settings.consumerKey;
-  input('consumer-secret').value = settings.consumerSecret;
-  input('api-base-url').value = settings.apiBaseUrl;
-  input('authorize-url').value = settings.authorizeUrl;
-  input('token-url').value = settings.tokenUrl;
-  input('test-endpoint').value = settings.testEndpoint;
   $('mapping-count').textContent = String(Object.keys(settings.nameMappings).length);
-  $('redirect-url').textContent = chrome.identity.getRedirectURL();
 }
 
 function bind(id: string, handler: () => Promise<void>): void {
@@ -90,7 +83,6 @@ function bind(id: string, handler: () => Promise<void>): void {
 
 bind('oauth-connect', async () => {
   try {
-    await saveSettings({ consumerKey: input('consumer-key').value.trim(), consumerSecret: input('consumer-secret').value.trim() });
     showStatus('auth-status', 'Waiting for Splitwise authorization…');
     const response = (await chrome.runtime.sendMessage<OAuthRequest, OAuthResponse>({ type: 'splitwise-oauth' })) ?? { ok: false, error: 'No response from background worker.' };
     if (!response.ok) throw new Error(response.error);
@@ -136,39 +128,11 @@ bind('save-group', async () => {
   showStatus('group-status', `Saved group ${groupName ?? `#${groupId}`}.`, 'ok');
 });
 
-// Permission requests must start synchronously inside the click handler to keep the user gesture.
-$('save-advanced').addEventListener('click', () => {
-  const patch: Partial<Settings> = {
-    apiBaseUrl: input('api-base-url').value.trim(),
-    authorizeUrl: input('authorize-url').value.trim(),
-    tokenUrl: input('token-url').value.trim(),
-    testEndpoint: input('test-endpoint').value.trim().replace(/\/+$/, ''),
-  };
-  let origins: string[];
-  try {
-    origins = extraOrigins([patch.apiBaseUrl!, patch.tokenUrl!, patch.testEndpoint!]);
-  } catch (error) {
-    showStatus('advanced-status', errorText(error), 'error');
-    return;
-  }
-  const granted = origins.length ? chrome.permissions.request({ origins }) : Promise.resolve(true);
-  void (async () => {
-    try {
-      if (!(await granted)) throw new Error(`Host permission denied for ${origins.join(', ')}.`);
-      await saveSettings(patch);
-      showStatus('advanced-status', 'Saved.', 'ok');
-    } catch (error) {
-      showStatus('advanced-status', errorText(error), 'error');
-    }
-  })();
-});
-
 bind('clear-mappings', async () => {
   await saveSettings({ nameMappings: {} });
   $('mapping-count').textContent = '0';
 });
 
-const schemaText = JSON.stringify(splitSchema, null, 2);
 const aiPrompt = [
   'The attached screenshot shows the "Participants" list of a Wolt group order checkout page.',
   'For every participant, return the amount they pay after item discounts and before service or delivery fees.',
@@ -176,22 +140,20 @@ const aiPrompt = [
   'Copy the names exactly as written. Use a dot as the decimal separator and no currency symbol.',
   'Answer with JSON only, no explanation, matching this JSON schema:',
   '',
-  schemaText,
+  JSON.stringify(splitSchema, null, 2),
 ].join('\n');
 $('ai-prompt').textContent = aiPrompt;
-$('split-schema').textContent = schemaText;
 
-async function copy(text: string, label: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text);
-    $('copy-status').textContent = `${label} copied.`;
-  } catch (error) {
-    $('copy-status').textContent = `Copy failed: ${errorText(error)}`;
-  }
-}
-
-$('copy-prompt').addEventListener('click', () => void copy(aiPrompt, 'Prompt'));
-$('copy-schema').addEventListener('click', () => void copy(schemaText, 'Schema'));
+$('copy-prompt').addEventListener('click', () => {
+  void (async () => {
+    try {
+      await navigator.clipboard.writeText(aiPrompt);
+      $('copy-status').textContent = 'Prompt copied.';
+    } catch (error) {
+      $('copy-status').textContent = `Copy failed: ${errorText(error)}`;
+    }
+  })();
+});
 
 void (async () => {
   await loadForm();

@@ -12,13 +12,8 @@
       <legend>Splitwise authentication</legend>
       <div id="auth-status" class="status">Checking…</div>
 
-      <h2>Sign in with OAuth</h2>
-      <p class="muted">
-        Register an app at <a href="https://secure.splitwise.com/apps" target="_blank" rel="noopener">secure.splitwise.com/apps</a> and set its
-        callback URL to <code id="redirect-url"></code>
-      </p>
-      <label><span>Consumer key</span><input id="consumer-key" class="wide" autocomplete="off" /></label>
-      <label><span>Consumer secret (stored only in this browser profile)</span><input id="consumer-secret" class="wide" type="password" autocomplete="off" /></label>
+      <h2>Sign in with Splitwise</h2>
+      <p class="muted">Opens Splitwise in a window where you approve access. The app secret stays on the sign-in service, never in this extension.</p>
       <div class="row"><button id="oauth-connect" class="primary">Connect with Splitwise</button></div>
 
       <h2>…or use a personal API key</h2>
@@ -43,19 +38,10 @@
     </fieldset>
 
     <fieldset>
-      <legend>Advanced</legend>
-      <label><span>Splitwise API base URL</span><input id="api-base-url" class="wide" /></label>
-      <label><span>OAuth authorize URL</span><input id="authorize-url" class="wide" /></label>
-      <label><span>OAuth token URL</span><input id="token-url" class="wide" /></label>
-      <label>
-        <span>Test endpoint – when set, expenses are POSTed here (without the access token) instead of Splitwise</span>
-        <input id="test-endpoint" class="wide" placeholder="https://….webhook.site" />
-      </label>
+      <legend>Name matching</legend>
       <div class="row">
-        <button id="save-advanced" class="primary">Save</button>
         <button id="clear-mappings">Forget remembered name mappings (<span id="mapping-count">0</span>)</button>
       </div>
-      <div id="advanced-status" class="status hidden"></div>
     </fieldset>
 
     <fieldset>
@@ -77,12 +63,8 @@
 
       <h2>Prompt</h2>
       <pre id="ai-prompt"></pre>
-      <div class="row"><button id="copy-prompt">Copy prompt</button></div>
-
-      <h2>JSON schema</h2>
-      <pre id="split-schema"></pre>
       <div class="row">
-        <button id="copy-schema">Copy schema</button>
+        <button id="copy-prompt">Copy prompt</button>
         <span id="copy-status" class="muted"></span>
       </div>
     </fieldset>

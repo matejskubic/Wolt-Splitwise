@@ -1,19 +1,32 @@
-import { getSettings, saveAuth } from '../shared/settings';
+import { AUTH_WORKER_URL } from '../shared/constants';
+import { removeLegacySettings, saveAuth } from '../shared/settings';
 import type { OAuthRequest, OAuthResponse } from '../shared/types';
 
+const AUTH_WINDOW_SIZE = { width: 560, height: 820 };
+
+/** launchWebAuthFlow has no size option; resize the popup window it opens so the consent page fits without scrolling. */
+function enlargeAuthWindow(): () => void {
+  const listener = (window: chrome.windows.Window): void => {
+    if (window.id === undefined || window.type !== 'popup') return;
+    chrome.windows.update(window.id, AUTH_WINDOW_SIZE).catch((error: unknown) => console.warn('Wolt to Splitwise: could not resize the sign-in window', error));
+  };
+  chrome.windows.onCreated.addListener(listener, { windowTypes: ['popup'] });
+  return () => chrome.windows.onCreated.removeListener(listener);
+}
+
+/** The auth worker adds the consumer secret; it redirects back to https://<extension-id>.chromiumapp.org/. */
 async function authorizeWithSplitwise(): Promise<void> {
-  const settings = await getSettings();
-  if (!settings.consumerKey || !settings.consumerSecret) throw new Error('Enter the Splitwise consumer key and secret first.');
-
-  const redirectUri = chrome.identity.getRedirectURL();
   const state = crypto.randomUUID();
-  const authorizeUrl = new URL(settings.authorizeUrl);
-  authorizeUrl.searchParams.set('response_type', 'code');
-  authorizeUrl.searchParams.set('client_id', settings.consumerKey);
-  authorizeUrl.searchParams.set('redirect_uri', redirectUri);
-  authorizeUrl.searchParams.set('state', state);
+  const startUrl = new URL('/auth/start', AUTH_WORKER_URL);
+  startUrl.searchParams.set('state', state);
 
-  const responseUrl = await chrome.identity.launchWebAuthFlow({ url: authorizeUrl.href, interactive: true });
+  const stopResizing = enlargeAuthWindow();
+  let responseUrl: string | undefined;
+  try {
+    responseUrl = await chrome.identity.launchWebAuthFlow({ url: startUrl.href, interactive: true });
+  } finally {
+    stopResizing();
+  }
   if (!responseUrl) throw new Error('Authorization was cancelled.');
   const callback = new URL(responseUrl);
   if (callback.searchParams.get('state') !== state) throw new Error('OAuth state mismatch.');
@@ -22,16 +35,10 @@ async function authorizeWithSplitwise(): Promise<void> {
   const code = callback.searchParams.get('code');
   if (!code) throw new Error('Splitwise did not return an authorization code.');
 
-  const response = await fetch(settings.tokenUrl, {
+  const response = await fetch(new URL('/auth/token', AUTH_WORKER_URL), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectUri,
-      client_id: settings.consumerKey,
-      client_secret: settings.consumerSecret,
-    }),
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ code }),
   });
   const token = (await response.json().catch(() => ({}))) as { access_token?: string; error?: string; error_description?: string };
   if (!response.ok || !token.access_token) {
@@ -39,6 +46,10 @@ async function authorizeWithSplitwise(): Promise<void> {
   }
   await saveAuth({ accessToken: token.access_token, method: 'oauth' });
 }
+
+chrome.runtime.onInstalled.addListener(() => {
+  removeLegacySettings().catch((error: unknown) => console.warn('Wolt to Splitwise: could not clean up old settings', error));
+});
 
 chrome.runtime.onMessage.addListener((message: OAuthRequest, sender, sendResponse: (response: OAuthResponse) => void) => {
   const fromExtensionPage = sender.id === chrome.runtime.id && sender.url?.startsWith(chrome.runtime.getURL(''));

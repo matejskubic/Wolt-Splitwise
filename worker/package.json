@@ -1,0 +1,19 @@
+{
+  "name": "wolt-splitwise-auth-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker that completes the Splitwise OAuth flow for the extension without exposing the consumer secret.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.149.0"
+  }
+}

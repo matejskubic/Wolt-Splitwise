@@ -1,7 +1,7 @@
 import { centsToDecimal, decimalToCents, formatMoney } from '../shared/money';
 import { matchMember, memberDisplayName, normalizeName, type SplitwiseMember } from '../shared/names';
 import { applyCheckoutDiscounts, listCheckoutSnapshots, rankSnapshots, saveCheckoutSnapshot, snapshotFromAmounts, type CheckoutSnapshot } from '../shared/orders';
-import { extraOrigins, getAuth, getSettings, saveSettings, type AuthState, type Settings } from '../shared/settings';
+import { getAuth, getSettings, saveSettings, type AuthState, type Settings } from '../shared/settings';
 import { buildExpensePayload, computeShares, distribute } from '../shared/split';
 import { parseSplitInput } from '../shared/splitInput';
 import { SplitwiseClient, type SplitwiseGroup } from '../shared/splitwise';
@@ -307,11 +307,10 @@ function setupGroupSelect(state: State): void {
 }
 
 function setup(state: State): void {
-  const { order, settings } = state;
+  const { order } = state;
   $<HTMLInputElement>('description').value = `Wolt${order.venue ? ` – ${order.venue}` : ''}`;
   describeGroup(state);
   setupGroupSelect(state);
-  $('mode').textContent = settings.testEndpoint ? `Test mode → ${new URL(settings.testEndpoint).host}` : '';
 
   const payer = $<HTMLSelectElement>('payer');
   fillPayer(state);
@@ -333,11 +332,10 @@ function setup(state: State): void {
   showStatus(unmatched ? `Match ${unmatched} Wolt name(s) to Splitwise members, review, then send.` : 'Review the split, then send.', unmatched ? 'warn' : '');
 }
 
-async function send(state: State, permission: Promise<boolean>): Promise<void> {
+async function send(state: State): Promise<void> {
   const button = $<HTMLButtonElement>('send');
   button.disabled = true;
   try {
-    if (!(await permission)) throw new Error('Host permission for the test endpoint was denied.');
     const { order, settings, group } = state;
     const fees = readFees(state);
     const payerId = Number($<HTMLSelectElement>('payer').value);
@@ -361,19 +359,13 @@ async function send(state: State, permission: Promise<boolean>): Promise<void> {
       groupId: group.id,
     });
 
-    const client = new SplitwiseClient(settings.apiBaseUrl, state.auth.accessToken);
-    const created = await client.createExpense(payload, settings.testEndpoint || undefined);
+    const created = await state.client.createExpense(payload);
 
     const nameMappings = { ...settings.nameMappings };
     for (const row of state.rows) nameMappings[normalizeName(row.participant.name)] = row.userId!;
     await saveSettings({ nameMappings });
 
-    showStatus(
-      created.testMode
-        ? `Test mode: expense of ${formatMoney(result.totalCents, order.currency)} posted to ${settings.testEndpoint}.`
-        : `Expense of ${formatMoney(result.totalCents, order.currency)} added to ${group.name}${created.expenseId ? ` (#${created.expenseId})` : ''}.`,
-      'ok',
-    );
+    showStatus(`Expense of ${formatMoney(result.totalCents, order.currency)} added to ${group.name}${created.expenseId ? ` (#${created.expenseId})` : ''}.`, 'ok');
     $('review').classList.add('hidden');
   } catch (error) {
     showStatus(errorText(error), 'error');
@@ -394,7 +386,7 @@ async function main(): Promise<void> {
   }
 
   showStatus('Reading the Wolt order…');
-  const client = new SplitwiseClient(settings.apiBaseUrl, auth.accessToken);
+  const client = new SplitwiseClient(auth.accessToken);
   const [order, group, me, snapshots, groups] = await Promise.all([
     captureOrder(tab.id),
     client.getGroup(settings.groupId),
@@ -409,10 +401,7 @@ async function main(): Promise<void> {
 
   $('review').addEventListener('submit', (event) => {
     event.preventDefault();
-    // Start the permission request synchronously so it keeps the user gesture.
-    const origins = settings.testEndpoint ? extraOrigins([settings.testEndpoint]) : [];
-    const permission = origins.length ? chrome.permissions.request({ origins }) : Promise.resolve(true);
-    void send(state, permission);
+    void send(state);
   });
 }
 

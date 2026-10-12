@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "auth-research",
+  // account_id comes from CLOUDFLARE_ACCOUNT_ID (GitHub environment variable in CI).
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    // Keeps OAuth codes in /auth/callback?code=… out of the logs.
+    "redact_query_string": true
+  },
+  // SplitwiseConsumerKey is passed with --var on deploy; keep it when deploying without it.
+  "keep_vars": true,
+  "vars": {
+    // Must match the "key" in src/manifest.json of the extension.
+    "EXTENSION_ID": "obkgbdhgmlhjlkldcdhcmmdgbpapmpdk"
+  },
+  "secrets": {
+    "required": ["SplitwiseConsumerSecret"]
+  }
+}

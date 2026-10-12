@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "description": "Capture Wolt group order costs per participant and add them as a Splitwise expense.",
   "minimum_chrome_version": "120",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArxzVQ2/1KuBMO3IcABWziJQsM3Crr4mGJraqxtAjg1Apqi65g3A/NK2ojS5jw4iKNnuNIjUj1t+U7tUNZd1hcSf1/DMCzCT296eQs2bjxia6ppXcZwzxnYtsKT4kNHw3ZeSZfj4Iq0SMHXubts2w2z0SUlmOJaiQ1oJMxKYlPwzbfGhkTfJjqgJM4u8t5/DQF6Lp/xc9UMfwk7tmOWBBkmzCwNtHgQ8mdAyhzhV+cmMS3MmdNSmdcyQJOit2f+8iFaZfyf6ZmYv8aEoay86FAOZq89jj+kA3hAglSK6D0htRtFk9258JAnQEtTxOmuQcadqZnrv9noxRe7gC7YCUBQIDAQAB",
   "action": {
     "default_title": "Send Wolt group order to Splitwise",
     "default_popup": "popup.html"
@@ -16,8 +17,7 @@
     "service_worker": "background.js"
   },
   "permissions": ["storage", "identity", "activeTab", "scripting"],
-  "host_permissions": ["https://secure.splitwise.com/*", "https://wolt.com/*"],
-  "optional_host_permissions": ["https://*/*"],
+  "host_permissions": ["https://secure.splitwise.com/*", "https://wolt.com/*", "https://auth-research.splitwise-extensions.workers.dev/*"],
   "content_scripts": [
     {
       "matches": ["https://wolt.com/*"],

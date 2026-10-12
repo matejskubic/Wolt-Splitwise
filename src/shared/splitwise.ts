@@ -1,3 +1,4 @@
+import { SPLITWISE_API_URL } from './constants';
 import type { SplitwiseMember } from './names';
 
 export interface SplitwiseGroup {
@@ -7,7 +8,6 @@ export interface SplitwiseGroup {
 }
 
 export interface CreateExpenseResult {
-  testMode: boolean;
   expenseId?: number;
   raw: string;
 }
@@ -35,13 +35,10 @@ function describeErrors(errors: unknown): string | undefined {
 }
 
 export class SplitwiseClient {
-  constructor(
-    private readonly apiBaseUrl: string,
-    private readonly accessToken: string,
-  ) {}
+  constructor(private readonly accessToken: string) {}
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetch(joinUrl(this.apiBaseUrl, path), {
+    const response = await fetch(joinUrl(SPLITWISE_API_URL, path), {
       ...init,
       headers: { Accept: 'application/json', Authorization: `Bearer ${this.accessToken}`, ...init.headers },
     });
@@ -68,23 +65,14 @@ export class SplitwiseClient {
     return (await this.request<{ group: SplitwiseGroup }>(`get_group/${id}`)).group;
   }
 
-  async createExpense(payload: Record<string, string | number>, testEndpoint?: string): Promise<CreateExpenseResult> {
-    const body = JSON.stringify(payload);
-    if (testEndpoint) {
-      // The access token is intentionally not sent to the test endpoint.
-      const response = await fetch(joinUrl(testEndpoint, 'create_expense'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-      const raw = await response.text();
-      if (!response.ok) throw new SplitwiseError(`Test endpoint failed with HTTP ${response.status}: ${raw.slice(0, 200)}`, response.status);
-      return { testMode: true, raw };
-    }
-
+  async createExpense(payload: Record<string, string | number>): Promise<CreateExpenseResult> {
     const result = await this.request<{ expenses?: { id: number }[]; errors?: unknown }>('create_expense', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body,
+      body: JSON.stringify(payload),
     });
     const errors = describeErrors(result.errors);
     if (errors) throw new SplitwiseError(`Splitwise refused the expense: ${errors}`);
-    return { testMode: false, expenseId: result.expenses?.[0]?.id, raw: JSON.stringify(result) };
+    return { expenseId: result.expenses?.[0]?.id, raw: JSON.stringify(result) };
   }
 }

@@ -6,6 +6,14 @@
 # Browser extension build output
 dist/
 
+# Extension signing key (the public part is in src/manifest.json)
+keys/
+*.pem
+
+# Cloudflare Worker local state
+.wrangler/
+.dev.vars*
+
 # User-specific files
 *.rsuser
 *.suo
