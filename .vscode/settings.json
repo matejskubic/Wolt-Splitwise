@@ -1,0 +1,9 @@
+{
+  "vscode-edge-devtools.browserFlavor": "Stable",
+  "vscode-edge-devtools.userDataDir": "C:\\Users\\matejsk\\AppData\\Local\\Microsoft\\Edge\\User Data",
+  "vscode-edge-devtools.browserArgs": [
+    "--profile-directory=Profile 3"
+  ],
+  "vscode-edge-devtools.headless": false,
+  "vscode-edge-devtools.showWorkers": true
+}

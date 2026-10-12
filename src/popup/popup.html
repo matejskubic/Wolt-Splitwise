@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Wolt to Splitwise</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="popup">
+    <div class="row" style="justify-content: space-between">
+      <h1>Wolt → Splitwise</h1>
+      <button id="open-options">Settings</button>
+    </div>
+    <div id="status" class="status">Loading…</div>
+
+    <form id="review" class="hidden">
+      <label><span>Description</span><input id="description" class="wide" required maxlength="120" /></label>
+      <div class="muted" id="group-info"></div>
+
+      <h2>Participants</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Wolt</th>
+            <th>Splitwise member</th>
+            <th class="num">Items</th>
+            <th class="num">Fees</th>
+            <th class="num">Owes</th>
+          </tr>
+        </thead>
+        <tbody id="participants"></tbody>
+      </table>
+
+      <h2>Fees split across all participants</h2>
+      <table>
+        <tbody id="fees"></tbody>
+      </table>
+      <div class="row" style="margin-top: 6px"><button type="button" id="add-fee">Add fee</button></div>
+
+      <h2>Payment</h2>
+      <label><span>Paid by</span><select id="payer" class="wide"></select></label>
+      <div id="summary" class="status"></div>
+      <div class="row">
+        <button type="submit" id="send" class="primary">Send to Splitwise</button>
+        <span id="mode" class="muted"></span>
+      </div>
+    </form>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,189 @@
+:root {
+  color-scheme: light dark;
+  --accent: #1cc29f;
+  --accent-dark: #139a7e;
+  --wolt: #009de0;
+  --danger: #d64545;
+  --warn: #b7791f;
+  --border: color-mix(in srgb, currentColor 18%, transparent);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 13px;
+}
+
+body {
+  margin: 0;
+  padding: 12px 14px;
+}
+
+body.popup {
+  width: 560px;
+  max-height: 580px;
+}
+
+body.options {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+h1 {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+
+h2 {
+  font-size: 14px;
+  margin: 18px 0 8px;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+}
+
+legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+label {
+  display: block;
+  margin: 6px 0;
+}
+
+label > span {
+  display: block;
+  font-size: 12px;
+  opacity: 0.75;
+  margin-bottom: 2px;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  box-sizing: border-box;
+}
+
+input.wide,
+select.wide {
+  width: 100%;
+}
+
+input.amount {
+  width: 80px;
+  text-align: right;
+}
+
+button {
+  font: inherit;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.link {
+  border: none;
+  padding: 0 4px;
+  color: var(--danger);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+th.num,
+td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+tr.unmatched select {
+  border-color: var(--danger);
+  outline: 1px solid var(--danger);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.muted {
+  opacity: 0.7;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 4px;
+  background: #202125;
+  color: #fff;
+  margin-left: 4px;
+}
+
+.status {
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+}
+
+.status.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.status.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.status.ok {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+}
+
+.hidden {
+  display: none !important;
+}
+
+code {
+  word-break: break-all;
+}

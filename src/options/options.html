@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Wolt to Splitwise – Settings</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="options">
+    <h1>Wolt to Splitwise – Settings</h1>
+
+    <fieldset>
+      <legend>Splitwise authentication</legend>
+      <div id="auth-status" class="status">Checking…</div>
+
+      <h2>Sign in with OAuth</h2>
+      <p class="muted">
+        Register an app at <a href="https://secure.splitwise.com/apps" target="_blank" rel="noopener">secure.splitwise.com/apps</a> and set its
+        callback URL to <code id="redirect-url"></code>
+      </p>
+      <label><span>Consumer key</span><input id="consumer-key" class="wide" autocomplete="off" /></label>
+      <label><span>Consumer secret (stored only in this browser profile)</span><input id="consumer-secret" class="wide" type="password" autocomplete="off" /></label>
+      <div class="row"><button id="oauth-connect" class="primary">Connect with Splitwise</button></div>
+
+      <h2>…or use a personal API key</h2>
+      <label><span>API key</span><input id="api-key" class="wide" type="password" autocomplete="off" /></label>
+      <div class="row">
+        <button id="apikey-connect">Use API key</button>
+        <button id="disconnect">Disconnect</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Splitwise group</legend>
+      <div class="row">
+        <select id="group-select" class="wide"></select>
+      </div>
+      <label><span>Group ID</span><input id="group-id" type="number" min="1" step="1" /></label>
+      <div class="row">
+        <button id="reload-groups">Reload groups</button>
+        <button id="save-group" class="primary">Save group</button>
+      </div>
+      <div id="group-status" class="status hidden"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Advanced</legend>
+      <label><span>Splitwise API base URL</span><input id="api-base-url" class="wide" /></label>
+      <label><span>OAuth authorize URL</span><input id="authorize-url" class="wide" /></label>
+      <label><span>OAuth token URL</span><input id="token-url" class="wide" /></label>
+      <label>
+        <span>Test endpoint – when set, expenses are POSTed here (without the access token) instead of Splitwise</span>
+        <input id="test-endpoint" class="wide" placeholder="https://….webhook.site" />
+      </label>
+      <div class="row">
+        <button id="save-advanced" class="primary">Save</button>
+        <button id="clear-mappings">Forget remembered name mappings (<span id="mapping-count">0</span>)</button>
+      </div>
+      <div id="advanced-status" class="status hidden"></div>
+    </fieldset>
+
+    <script src="options.js"></script>
+  </body>
+</html>

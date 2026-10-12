@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Wolt to Splitwise",
+  "version": "0.0.0",
+  "description": "Capture Wolt group order costs per participant and add them as a Splitwise expense.",
+  "minimum_chrome_version": "120",
+  "action": {
+    "default_title": "Send Wolt group order to Splitwise",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "identity", "activeTab", "scripting"],
+  "host_permissions": ["https://secure.splitwise.com/*", "https://wolt.com/*"],
+  "optional_host_permissions": ["https://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://wolt.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
