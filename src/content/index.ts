@@ -1,6 +1,7 @@
 import { saveCheckoutSnapshot, toSnapshot } from '../shared/orders';
 import type { CaptureRequest, CaptureResponse, WoltOrder } from '../shared/types';
 import { parseWoltCheckout, parseWoltHistory } from './parser';
+import { captureTrackingReceipt, isTrackingPage } from './tracking';
 
 const READY_TAB_RE = /^ready:?\s*\d+$/i;
 const CHECKOUT_PATH_RE = /\/group-order\/([^/?#]+)\/checkout/;
@@ -71,13 +72,18 @@ if (!window.__woltSplitwiseLoaded) {
     if (sender.id !== chrome.runtime.id || message?.type !== 'wolt-capture') return false;
     void (async () => {
       try {
+        if (isTrackingPage(location.pathname)) {
+          const order = await captureTrackingReceipt(document, location.href);
+          sendResponse({ ok: true, order });
+          return;
+        }
         if (HISTORY_PATH_RE.test(location.pathname)) {
           const order = await captureHistory();
           sendResponse(order.participants.length ? { ok: true, order } : { ok: false, error: 'No participants found on this order history page.' });
           return;
         }
         const order = await captureCheckoutOnRequest();
-        sendResponse(order.participants.length ? { ok: true, order } : { ok: false, error: 'No ready participants found. Open the group order checkout or an order history page.' });
+        sendResponse(order.participants.length ? { ok: true, order } : { ok: false, error: 'No ready participants found. Open a Wolt checkout, order history or order tracking page.' });
       } catch (error) {
         sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) });
       }

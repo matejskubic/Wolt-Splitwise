@@ -37,6 +37,13 @@ async function copyStatic(): Promise<void> {
   const manifest = JSON.parse(await readFile(join(root, 'src', 'manifest.json'), 'utf8')) as Record<string, unknown>;
   manifest.version = pkg.version;
   if (dev) manifest.name = `${String(manifest.name)} (dev)`;
+  if (dev && !process.env.CI) {
+    const now = new Date();
+    const revision = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    manifest.version = `${pkg.version.split('.').slice(0, 3).join('.')}.${Number(revision)}`;
+    manifest.version_name = `${date} ${revision.slice(0, 2)}:${revision.slice(2)}`;
+  }
   await writeFile(join(outdir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   for (const file of ['popup/popup.html', 'options/options.html', 'styles.css']) {
     await cp(join(root, 'src', file), join(outdir, file.split('/').pop()!));

@@ -71,6 +71,40 @@ export interface ExpenseMeta {
   date?: Date;
 }
 
+const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+export function parseOrderPlacedDate(placedAt: string | undefined): Date | undefined {
+  if (placedAt === undefined) return undefined;
+  const text = placedAt.replace(/^Order placed:\s*/i, '').trim();
+  const numeric = /^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})$/.exec(text);
+  const named = /^([a-z]+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}):(\d{2})\s+(AM|PM)$/i.exec(text);
+  let month: number;
+  let day: number;
+  let year: number;
+  let hour: number;
+  let minute: number;
+  if (numeric) {
+    day = Number(numeric[1]);
+    month = Number(numeric[2]) - 1;
+    year = Number(numeric[3]);
+    hour = Number(numeric[4]);
+    minute = Number(numeric[5]);
+  } else if (named && Number(named[4]) >= 1 && Number(named[4]) <= 12) {
+    month = MONTH_NAMES.indexOf(named[1]!.toLowerCase());
+    day = Number(named[2]);
+    year = Number(named[3]);
+    hour = Number(named[4]) % 12 + (named[6]!.toUpperCase() === 'PM' ? 12 : 0);
+    minute = Number(named[5]);
+  } else {
+    throw new Error(`Could not parse the order's placement date: ${placedAt}`);
+  }
+  const date = new Date(year, month, day, hour, minute);
+  if (month < 0 || month > 11 || hour > 23 || minute > 59 || date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day || date.getHours() !== hour || date.getMinutes() !== minute) {
+    throw new Error(`Invalid order placement date: ${placedAt}`);
+  }
+  return date;
+}
+
 export function buildExpensePayload(result: ShareResult, meta: ExpenseMeta): Record<string, string | number> {
   const payload: Record<string, string | number> = {
     cost: centsToDecimal(result.totalCents),

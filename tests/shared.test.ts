@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { centsToDecimal, decimalToCents, extractTrailingMoney, parseMoneyLine } from '../src/shared/money';
 import { matchMember, type SplitwiseMember } from '../src/shared/names';
-import { buildExpensePayload, computeShares, distribute } from '../src/shared/split';
+import { buildExpensePayload, computeShares, distribute, parseOrderPlacedDate } from '../src/shared/split';
 
 describe('money', () => {
   it.each([
@@ -61,6 +61,37 @@ describe('matchMember', () => {
 });
 
 describe('split', () => {
+  it('uses the day-first order placement time in the local timezone for the UTC expense date', () => {
+    const date = parseOrderPlacedDate('09/10/2026, 10:36')!;
+    expect(date.getFullYear()).toBe(2026);
+    expect(date.getMonth()).toBe(9);
+    expect(date.getDate()).toBe(9);
+    expect(date.getHours()).toBe(10);
+    expect(date.getMinutes()).toBe(36);
+    const payload = buildExpensePayload(computeShares([{ userId: 1, itemCents: 100 }], 0, 1), {
+      description: 'Wolt', currencyCode: 'EUR', categoryId: 25, groupId: 1, date,
+    });
+    expect(payload.date).toBe(new Date(2026, 9, 9, 10, 36).toISOString());
+    expect(String(payload.date)).toMatch(/T\d{2}:\d{2}:00\.000Z$/);
+  });
+
+  it.each([
+    ['Order placed: 09/10/2026, 10:36', 9, 10, 36],
+    ['October 13, 2026 11:05 AM', 13, 11, 5],
+    ['October 13, 2026 12:05 AM', 13, 0, 5],
+    ['October 13, 2026 12:05 PM', 13, 12, 5],
+  ])('parses %s as local time', (text, day, hour, minute) => {
+    expect(parseOrderPlacedDate(text)).toEqual(new Date(2026, 9, day, hour, minute));
+  });
+
+  it.each(['31/02/2026, 10:36', '09/13/2026, 10:36', '09/10/2026, 24:00', '09/10/2026, 10:60', 'October 13, 2026 13:05 PM', 'bad date', ''])('rejects invalid placement time %s', (text) => {
+    expect(() => parseOrderPlacedDate(text)).toThrow();
+  });
+
+  it('leaves checkout dates without a placement timestamp unset', () => {
+    expect(parseOrderPlacedDate(undefined)).toBeUndefined();
+  });
+
   it('distributes remainders by cent', () => {
     expect(distribute(100, 3)).toEqual([34, 33, 33]);
     expect(distribute(0, 2)).toEqual([0, 0]);

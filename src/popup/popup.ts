@@ -2,7 +2,7 @@ import { centsToDecimal, decimalToCents, formatMoney } from '../shared/money';
 import { matchMember, memberDisplayName, normalizeName, type SplitwiseMember } from '../shared/names';
 import { applyCheckoutDiscounts, listCheckoutSnapshots, rankSnapshots, saveCheckoutSnapshot, snapshotFromAmounts, type CheckoutSnapshot } from '../shared/orders';
 import { getAuth, getSettings, saveSettings, type AuthState, type Settings } from '../shared/settings';
-import { buildExpensePayload, computeShares, distribute } from '../shared/split';
+import { buildExpensePayload, computeShares, distribute, parseOrderPlacedDate } from '../shared/split';
 import { parseSplitInput } from '../shared/splitInput';
 import { SplitwiseClient, type SplitwiseGroup } from '../shared/splitwise';
 import type { CaptureRequest, CaptureResponse, WoltOrder, WoltParticipant } from '../shared/types';
@@ -357,6 +357,7 @@ async function send(state: State): Promise<void> {
       currencyCode: order.currency,
       categoryId: settings.categoryId,
       groupId: group.id,
+      date: parseOrderPlacedDate(order.placedAt),
     });
 
     const created = await state.client.createExpense(payload);
@@ -382,7 +383,7 @@ async function main(): Promise<void> {
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id || !tab.url || !/^https:\/\/wolt\.com\//.test(tab.url)) {
-    return showStatus('Open a Wolt group order checkout or an order history page and click the extension again.', 'warn');
+    return showStatus('Open a Wolt checkout, order history or order tracking page and click the extension again.', 'warn');
   }
 
   showStatus('Reading the Wolt order…');
