@@ -39,17 +39,17 @@ The tracked `src/manifest.json` has no `key`. Local `pnpm build:dev` and `pnpm w
 
 Production (`pnpm build`) and CI builds omit the key and need no local key files. Local dev versions include the build time (`0.1.0.HHmm`, display name `YYYY-MM-DD HH:mm`); production and CI use the package version.
 
-Without a manifest key, unpacked builds have a path-derived ID and store installs have a store-assigned ID. OAuth requires `EXTENSION_ID` in `worker/wrangler.jsonc` to match the installed extension. If you replace the development key or publish to a store, update that ID and redeploy the worker; do not assume the keyless release retains the development ID.
+Without a manifest key, unpacked builds have a path-derived ID and store installs have a store-assigned ID. Sign-in only works for IDs listed in `EXTENSION_IDS` in `worker/wrangler.jsonc` (comma-separated): the local development ID plus the Chrome and Edge store listings. When you publish to another store or replace a key, add the new ID there and redeploy the worker.
 
 ## Sign-in service (Cloudflare Worker)
 
-Flow: extension → `GET /auth/start` → Splitwise consent → `GET /auth/callback` → `https://<extension-id>.chromiumapp.org/?code=…` → extension `POST /auth/token` → worker adds the secret and returns the access token.
+Flow: extension → `GET /auth/start?state=…&ext=<extension-id>` (the worker rejects IDs not in `EXTENSION_IDS` and carries the ID in the OAuth `state`) → Splitwise consent → `GET /auth/callback` → `https://<extension-id>.chromiumapp.org/?code=…` for that same extension → extension `POST /auth/token` (its `Origin` must be an allowed ID) → worker adds the secret and returns the access token.
 
 Configuration:
 
 | What | Where |
 | --- | --- |
-| `EXTENSION_ID` | `worker/wrangler.jsonc` |
+| `EXTENSION_IDS` (allowed extension IDs, comma-separated) | `worker/wrangler.jsonc` |
 | `CLOUDFLARE_ACCOUNT_ID`, `SPLITWISE_CONSUMER_KEY` (public client id) | GitHub environment variables (see *Deploy*); locally as environment variables |
 | `SplitwiseConsumerSecret` | Cloudflare secret: `pnpm --dir worker exec wrangler secret put SplitwiseConsumerSecret` |
 | Callback URL `https://auth-research.splitwise-extensions.workers.dev/auth/callback` | Splitwise app settings at [secure.splitwise.com/apps](https://secure.splitwise.com/apps). Splitwise always uses this registered URL. |

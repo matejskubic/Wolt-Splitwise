@@ -14,11 +14,12 @@ function enlargeAuthWindow(): () => void {
   return () => chrome.windows.onCreated.removeListener(listener);
 }
 
-/** The auth worker adds the consumer secret; it redirects back to https://<extension-id>.chromiumapp.org/. */
+/** The auth worker adds the consumer secret; it redirects back to https://<extension-id>.chromiumapp.org/ for the id sent in `ext`. */
 async function authorizeWithSplitwise(): Promise<void> {
   const state = crypto.randomUUID();
   const startUrl = new URL('/auth/start', AUTH_WORKER_URL);
   startUrl.searchParams.set('state', state);
+  startUrl.searchParams.set('ext', chrome.runtime.id);
 
   const stopResizing = enlargeAuthWindow();
   let responseUrl: string | undefined;

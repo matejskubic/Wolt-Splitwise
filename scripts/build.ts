@@ -52,6 +52,7 @@ async function copyStatic(): Promise<void> {
   for (const file of ['popup/popup.html', 'options/options.html', 'styles.css']) {
     await cp(join(root, 'src', file), join(outdir, file.split('/').pop()!));
   }
+  await cp(join(root, 'src', 'icons', 'icon-128.png'), join(outdir, 'icon-128.png'));
 }
 
 await rm(outdir, { recursive: true, force: true });

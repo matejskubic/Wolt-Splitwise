@@ -16,8 +16,8 @@
   // SplitwiseConsumerKey is passed with --var on deploy; keep it when deploying without it.
   "keep_vars": true,
   "vars": {
-    // Must match the "key" in src/manifest.json of the extension.
-    "EXTENSION_ID": "obkgbdhgmlhjlkldcdhcmmdgbpapmpdk"
+    // Comma-separated ids of the extensions allowed to sign in: the local dev key (keys/extension-key.pem) and the Chrome and Edge store listings.
+    "EXTENSION_IDS": "obkgbdhgmlhjlkldcdhcmmdgbpapmpdk,elhhacijlpipdbfbmfigbenoepbbdhed,hgbfldlknjjdamhfomehnaipjcdohafp"
   },
   "secrets": {
     "required": ["SplitwiseConsumerSecret"]
