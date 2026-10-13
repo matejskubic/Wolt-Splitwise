@@ -15,6 +15,8 @@ pnpm workspace: the root package is the extension, `worker/` is a separate packa
 
 Requirements: Node 22, pnpm (`corepack enable`), PowerShell 7, Edge.
 
+Restore your development key to `keys/extension-key.pem` before building locally (see *Extension ID* below).
+
 ```pwsh
 pnpm install
 pnpm build:dev        # or: pnpm watch
@@ -33,7 +35,11 @@ pnpm worker:test                   # worker
 
 ## Extension ID
 
-The `key` in `src/manifest.json` fixes the extension ID to `obkgbdhgmlhjlkldcdhcmmdgbpapmpdk`. The private key is `keys/extension-key.pem` (git-ignored, keep a backup). If the key changes, update `EXTENSION_ID` in `worker/wrangler.jsonc` and redeploy the worker.
+The tracked `src/manifest.json` has no `key`. Local `pnpm build:dev` and `pnpm watch` derive its public value from `keys/extension-key.pem` and inject it into `dist/manifest.json`, preserving the development ID `obkgbdhgmlhjlkldcdhcmmdgbpapmpdk`. The entire `keys/` folder is git-ignored; keep a backup of the PEM and restore it on a new machine. Local dev builds fail with a clear error if it is missing. The private key is never bundled.
+
+Production (`pnpm build`) and CI builds omit the key and need no local key files. Local dev versions include the build time (`0.1.0.HHmm`, display name `YYYY-MM-DD HH:mm`); production and CI use the package version.
+
+Without a manifest key, unpacked builds have a path-derived ID and store installs have a store-assigned ID. OAuth requires `EXTENSION_ID` in `worker/wrangler.jsonc` to match the installed extension. If you replace the development key or publish to a store, update that ID and redeploy the worker; do not assume the keyless release retains the development ID.
 
 ## Sign-in service (Cloudflare Worker)
 

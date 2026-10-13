@@ -1,6 +1,7 @@
 import { context, build, type BuildOptions } from 'esbuild';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { createPublicKey } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,6 +39,9 @@ async function copyStatic(): Promise<void> {
   manifest.version = pkg.version;
   if (dev) manifest.name = `${String(manifest.name)} (dev)`;
   if (dev && !process.env.CI) {
+    const keyPath = join(root, 'keys', 'extension-key.pem');
+    if (!existsSync(keyPath)) throw new Error('Local dev builds require keys/extension-key.pem. Restore your development key (see DEVELOPMENT.md).');
+    manifest.key = createPublicKey(await readFile(keyPath, 'utf8')).export({ type: 'spki', format: 'der' }).toString('base64');
     const now = new Date();
     const revision = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
