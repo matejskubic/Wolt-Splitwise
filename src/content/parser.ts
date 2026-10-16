@@ -11,12 +11,12 @@ const PARTICIPANTS_RE = /^participants$/i;
 const SECTION_END_RE = /^(lock order together|unlock order|cancel this order|order summary|payment summary|summary|payment method|items)$/i;
 const SKIP_RE = /^(host pays for everyone|everyone pays for themselves|.*pays for .*|not ready:?\s*\d*|ready:?\s*\d+|participants|you)$/i;
 
-const FEE_RE = /\b(delivery|service|small order|surcharge|bag|packaging|fee)\b/i;
-const FEE_EXCLUDE_RE = /\b(subtotal|total|discount|tip|promo|credits?|time|address|estimate|minutes?|min|free delivery|pickup|order together)\b/i;
-const TOTAL_RE = /^total(?:\s+(?:sum|price|amount))?$/i;
+const FEE_RE = /\b(delivery|service|small order|surcharge|bag|packaging|fee|dostava|storitev|provizija)\b/i;
+const FEE_EXCLUDE_RE = /\b(subtotal|total|discount|tip|promo|credits?|time|address|estimate|minutes?|min|free delivery|pickup|order together|skupni znesek|popust|napitnina)\b/i;
+const TOTAL_RE = /^(?:total(?:\s+(?:sum|price|amount))?|skupni znesek)$/i;
 const LABEL_STOP_RE = /\b(subtotal|total|applied offers|offers?|discounts?)\b/i;
-const DISCOUNT_LABEL_RE = /^(applied offers|discounts?\d*|offers|promo(?:tion)?s?|credits?)$/i;
-const DISCOUNT_WORD_RE = /\b(discounts?|offers?|promo|credits?|vouchers?)\b/i;
+const DISCOUNT_LABEL_RE = /^(applied offers|discounts?\d*|offers|promo(?:tion)?s?|credits?|popusti?)$/i;
+const DISCOUNT_WORD_RE = /\b(discounts?|offers?|promo|credits?|vouchers?|popusti?)\b/i;
 const AMOUNT_LOOKAHEAD = 5;
 const READY_STATUS_RE = /^ready$/i;
 
@@ -172,6 +172,15 @@ function historyAmount(line: string | undefined): number | null {
   return HISTORY_AMOUNT_RE.test(line) ? amountToCents(line) : null;
 }
 
+function elementAmount(element: HTMLElement | null): number | null {
+  if (!element) return null;
+  for (const line of splitLines(element.innerText).reverse()) {
+    const amount = historyAmount(line);
+    if (amount !== null) return amount;
+  }
+  return null;
+}
+
 /** Reads the label/amount rows (delivery, service fee, discounts) that sit between the last item and the total. */
 function parseHistoryCharges(lines: string[], start: number, totalIndex: number): { rows: WoltFee[]; firstIndex: number } {
   const rows: WoltFee[] = [];
@@ -203,10 +212,10 @@ function parseHistoryCharges(lines: string[], start: number, totalIndex: number)
 /** Parses a past order on wolt.com/…/me/order-history/<id>. Prices there are before item discounts. */
 export function parseWoltHistory(text: string): WoltOrder {
   const lines = splitLines(text);
-  const backIndex = lines.findIndex((line) => /^back to order history$/i.test(line));
-  const orderId = lines.map((line) => /^order id:\s*(\S+)/i.exec(line)?.[1]).find(Boolean);
-  const placedAt = lines.map((line) => /^order placed:\s*(.+)$/i.exec(line)?.[1]).find(Boolean);
-  const itemsIndex = lines.findIndex((line) => /^items$/i.test(line));
+  const backIndex = lines.findIndex((line) => /^(back to order history|nazaj na (?:status naročila|zgodovino naročil))$/i.test(line));
+  const orderId = lines.map((line) => /(?:^order id:\s*|^id naročila:\s*)([a-f\d]{24})/i.exec(line)?.[1]).find(Boolean);
+  const placedAt = lines.map((line) => /((?:\d{1,2}\.\s*)?\d{1,2}[./]\s*\d{1,2}[./]\s*\d{2,4},?\s*\d{1,2}:\d{2}|[A-Za-z]+\s+\d{1,2},\s+\d{4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))/i.exec(line)?.[1]).find(Boolean);
+  const itemsIndex = lines.findIndex((line) => /^(items|artikli)$/i.test(line));
   let totalIndex = -1;
   lines.forEach((line, index) => {
     if (index > itemsIndex && TOTAL_RE.test(line)) totalIndex = index;
@@ -233,9 +242,9 @@ export function parseWoltHistory(text: string): WoltOrder {
 
   for (let index = itemsIndex + 1; index < firstIndex; index++) {
     const line = lines[index]!;
-    if (!isNameCandidate(line) || line.includes('?:')) continue;
     const isHost = HOST_RE.test(lines[index + 1] ?? '');
     const price = parseMoneyLine(lines[index + (isHost ? 2 : 1)]);
+    if ((!isNameCandidate(line) && !(INITIALS_RE.test(line) && price)) || line.includes('?:')) continue;
     if (!price) continue;
     order.currency = price.currency;
     order.participants.push({ name: line, isHost, status: 'Ready', cents: price.cents, originalCents: price.cents });
@@ -243,4 +252,50 @@ export function parseWoltHistory(text: string): WoltOrder {
   const totalLine = lines[totalIndex + 1];
   if (order.totalCents === undefined && totalLine) order.totalCents = historyAmount(totalLine) ?? undefined;
   return order;
+}
+
+/** Reads the locale-independent data-test-id receipt structure, falling back to its localized text. */
+export function parseWoltHistoryReceipt(receipt: HTMLElement): WoltOrder {
+  const fallback = parseWoltHistory(receipt.innerText);
+  const participantElements = [...receipt.querySelectorAll<HTMLElement>('[data-test-id="ParticipantNameLine"]')];
+  if (!participantElements.length) return fallback;
+
+  const participants: WoltParticipant[] = [];
+  let currency = fallback.currency;
+  for (const element of participantElements) {
+    const lines = splitLines(element.innerText);
+    const price = lines.map(parseMoneyLine).find((value) => value !== null);
+    const isHost = lines.some((line) => /^(host|gostitelj)$/i.test(line));
+    const name = lines.find((line) => parseMoneyLine(line) === null && !/^(host|gostitelj)$/i.test(line));
+    if (!name || !price) continue;
+    currency = price.currency;
+    participants.push({ name, isHost, status: 'Ready', cents: price.cents, originalCents: price.cents });
+  }
+  if (!participants.length) return fallback;
+
+  const serviceFees = [...receipt.querySelectorAll<HTMLElement>('[data-test-id="OrderDetailsWoltServiceFee"]')]
+    .map((element) => elementAmount(element))
+    .filter((cents): cents is number => cents !== null && cents > 0)
+    .map((cents) => ({ label: 'Service fee', cents }));
+  const deliveryFees = [...receipt.querySelectorAll<HTMLElement>('[data-test-id="RowWithSubItems-MainRow"]')]
+    .map((element) => elementAmount(element))
+    .filter((cents): cents is number => cents !== null && cents > 0)
+    .map((cents) => ({ label: 'Delivery', cents }));
+  const discountRows = [...receipt.querySelectorAll<HTMLElement>('[data-test-id^="OrderDetailsWoltDiscount"]')]
+    .map((element) => elementAmount(element))
+    .filter((cents): cents is number => cents !== null && cents !== 0)
+    .map((cents) => ({ label: 'Discount', cents: -Math.abs(cents) }));
+  const totalElement = receipt.querySelector<HTMLElement>('[data-test-id="TotalRowCheckoutTotal"]');
+  const idElement = receipt.querySelector<HTMLElement>('[data-test-id="receipt-header.order.order-id"]');
+
+  return {
+    ...fallback,
+    orderId: idElement?.innerText.match(/[a-f\d]{24}/i)?.[0] ?? fallback.orderId,
+    venue: receipt.querySelector<HTMLElement>('h2')?.innerText.trim() || fallback.venue,
+    currency,
+    participants,
+    fees: serviceFees.length || deliveryFees.length ? [...deliveryFees, ...serviceFees] : fallback.fees,
+    discounts: discountRows.length ? discountRows : fallback.discounts,
+    totalCents: elementAmount(totalElement) ?? fallback.totalCents,
+  };
 }

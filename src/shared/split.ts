@@ -76,7 +76,7 @@ const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'ju
 export function parseOrderPlacedDate(placedAt: string | undefined): Date | undefined {
   if (placedAt === undefined) return undefined;
   const text = placedAt.replace(/^Order placed:\s*/i, '').trim();
-  const numeric = /^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})$/.exec(text);
+  const numeric = /^(\d{1,2})\.?\s*(?:\/|\.)\s*(\d{1,2})\.?\s*(?:\/|\.)\s*(\d{2}|\d{4}),?\s*(\d{1,2}):(\d{2})$/.exec(text);
   const named = /^([a-z]+)\s+(\d{1,2}),\s+(\d{4})\s+(\d{1,2}):(\d{2})\s+(AM|PM)$/i.exec(text);
   let month: number;
   let day: number;
@@ -86,7 +86,8 @@ export function parseOrderPlacedDate(placedAt: string | undefined): Date | undef
   if (numeric) {
     day = Number(numeric[1]);
     month = Number(numeric[2]) - 1;
-    year = Number(numeric[3]);
+    const parsedYear = Number(numeric[3]);
+    year = parsedYear < 100 ? 2000 + parsedYear : parsedYear;
     hour = Number(numeric[4]);
     minute = Number(numeric[5]);
   } else if (named && Number(named[4]) >= 1 && Number(named[4]) <= 12) {

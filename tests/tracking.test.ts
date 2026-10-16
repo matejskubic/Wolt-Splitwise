@@ -20,6 +20,7 @@ function mockPage(alreadyOpen = false, text = receiptText): { page: Document; cl
     innerText: text,
     getClientRects: () => [{}],
     querySelector: () => ({ textContent: 'Roza Slon Be\u017eigrad' }),
+    querySelectorAll: () => [],
   };
   const click = vi.fn(() => { open = true; });
   const button = { click, disabled: false, getClientRects: () => [{}] };

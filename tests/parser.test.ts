@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseWoltCheckout, parseWoltHistory } from '../src/content/parser';
+import { parseWoltCheckout, parseWoltHistory, parseWoltHistoryReceipt } from '../src/content/parser';
 
 const snapshot = readFileSync(new URL('./fixtures/wolt-snapshot.txt', import.meta.url), 'utf8');
 
@@ -113,5 +113,54 @@ describe('parseWoltHistory', () => {
     const order = parseWoltHistory(['Items', 'Ana', '€9.00', 'Burger', '9.00', '×1', '9.00', 'Service fee', '1.00', 'Total sum', '€10.00'].join('\n'));
     expect(order.participants).toEqual([{ name: 'Ana', isHost: false, status: 'Ready', cents: 900, originalCents: 900 }]);
     expect(order.fees).toEqual([{ label: 'Service fee', cents: 100 }]);
+  });
+
+  it('captures short uppercase participant names when followed by a participant price', () => {
+    const order = parseWoltHistory(['Items', 'TT', '€10.50', 'Tortilija Greek', '10.50', '×1', '10.50', 'Anže Krpič', '€10.50', 'Tortilija Greek', '10.50', '×1', '10.50', 'Service fee', '2.02', 'Total sum', '€23.02'].join('\n'));
+    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([['TT', 1050], ['Anže Krpič', 1050]]);
+    expect(order.totalCents).toBe(2302);
+  });
+
+  it('parses a Slovenian order-history receipt', () => {
+    const text = [
+      'Nazaj na status naročila', 'Greenbox', 'Naročilo je oddano: 16. 10. 26, 11:05',
+      'Dostava', 'Naroči skupaj', 'V pripravi', 'Tvoja številka naročila: 103',
+      'ID naročila: 6ad1e8e18553ec271b4ace06', 'Artikli',
+      'TT', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
+      'Anže Krpič', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
+      'Bernarda Podhraški', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
+      'DostavaWork\t0,00', 'Strošek storitve', '2,02', 'Skupni znesek', '33,52 €',
+    ].join('\n');
+    const order = parseWoltHistory(text);
+    expect(order).toMatchObject({ venue: 'Greenbox', orderId: '6ad1e8e18553ec271b4ace06', placedAt: '16. 10. 26, 11:05', currency: 'EUR', totalCents: 3352 });
+    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([
+      ['TT', 1050], ['Anže Krpič', 1050], ['Bernarda Podhraški', 1050],
+    ]);
+    expect(order.fees).toEqual([{ label: 'Strošek storitve', cents: 202 }]);
+  });
+
+  it('reads receipt data attributes even when receipt labels are in an unknown language', () => {
+    const node = (innerText: string, textContent = innerText): HTMLElement => ({ innerText, textContent } as HTMLElement);
+    const selectors = new Map<string, HTMLElement>([
+      ['h2', node('Greenbox')],
+      ['[data-test-id="receipt-header.order.order-id"]', node('ID: 6ad1e8e18553ec271b4ace06')],
+      ['[data-test-id="TotalRowCheckoutTotal"]', node('Summe\n33,52 €')],
+    ]);
+    const collections = new Map<string, HTMLElement[]>([
+      ['[data-test-id="ParticipantNameLine"]', [node('TT\n10,50 €'), node('Anže Krpič\n10,50 €')]],
+      ['[data-test-id="OrderDetailsWoltServiceFee"]', [node('Gebühr\n2,02')]],
+      ['[data-test-id="RowWithSubItems-MainRow"]', [node('Zustellung\n0,00')]],
+      ['[data-test-id^="OrderDetailsWoltDiscount"]', []],
+    ]);
+    const receipt = {
+      innerText: 'Unrecognized localized order receipt',
+      querySelector: (selector: string) => selectors.get(selector) ?? null,
+      querySelectorAll: (selector: string) => collections.get(selector) ?? [],
+    } as unknown as HTMLElement;
+
+    const order = parseWoltHistoryReceipt(receipt);
+    expect(order).toMatchObject({ venue: 'Greenbox', orderId: '6ad1e8e18553ec271b4ace06', totalCents: 3352, currency: 'EUR' });
+    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([['TT', 1050], ['Anže Krpič', 1050]]);
+    expect(order.fees).toEqual([{ label: 'Service fee', cents: 202 }]);
   });
 });

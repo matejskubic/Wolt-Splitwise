@@ -1,6 +1,6 @@
 import { saveCheckoutSnapshot, toSnapshot } from '../shared/orders';
 import type { CaptureRequest, CaptureResponse, WoltOrder } from '../shared/types';
-import { parseWoltCheckout, parseWoltHistory } from './parser';
+import { parseWoltCheckout, parseWoltHistoryReceipt } from './parser';
 import { captureTrackingReceipt, isTrackingPage } from './tracking';
 
 const READY_TAB_RE = /^ready:?\s*\d+$/i;
@@ -41,8 +41,13 @@ async function captureCheckoutOnRequest(): Promise<WoltOrder> {
 }
 
 async function captureHistory(): Promise<WoltOrder> {
-  for (let elapsed = 0; elapsed < 5000 && !/total sum/i.test(document.body.innerText); elapsed += 250) await delay(250);
-  return { ...parseWoltHistory(document.body.innerText), url: location.href };
+  let receipt = document.querySelector<HTMLElement>('[data-test-id="order-receipt-container-element"]');
+  for (let elapsed = 0; elapsed < 5000 && (!receipt || !receipt.querySelector('[data-test-id="TotalRowCheckoutTotal"]')); elapsed += 250) {
+    await delay(250);
+    receipt = document.querySelector<HTMLElement>('[data-test-id="order-receipt-container-element"]');
+  }
+  receipt ??= document.body;
+  return { ...parseWoltHistoryReceipt(receipt), url: location.href };
 }
 
 let lastAutoCapture = '';

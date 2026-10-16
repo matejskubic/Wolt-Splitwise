@@ -1,5 +1,5 @@
 import type { WoltOrder } from '../shared/types';
-import { parseWoltHistory } from './parser';
+import { parseWoltHistoryReceipt } from './parser';
 
 const TRACKING_PATH_RE = /\/(?:me\/order-tracking-v2\/[^/?#]+|group-order\/[^/?#]+\/tracking-v2)\/?$/;
 const RECEIPT_SELECTOR = '[data-test-id="order-receipt-container-element"]';
@@ -14,7 +14,7 @@ export async function captureTrackingReceipt(page: Document, url: string): Promi
   for (let elapsed = 0; elapsed < 5000; elapsed += 250) {
     const receipt = page.querySelector<HTMLElement>(RECEIPT_SELECTOR);
     if (receipt && receipt.getClientRects().length > 0) {
-      const order = parseWoltHistory(receipt.innerText);
+      const order = parseWoltHistoryReceipt(receipt);
       if (order.participants.length && order.totalCents !== undefined) {
         return { ...order, venue: receipt.querySelector('h2')?.textContent?.trim() || order.venue, url };
       }
