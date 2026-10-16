@@ -1,5 +1,7 @@
 :root {
   color-scheme: light dark;
+  --select-background: #fff;
+  --select-foreground: #181818;
   --accent: #1cc29f;
   --accent-dark: #139a7e;
   --wolt: #009de0;
@@ -8,6 +10,13 @@
   --border: color-mix(in srgb, currentColor 18%, transparent);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 13px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --select-background: #202124;
+    --select-foreground: #f1f3f4;
+  }
 }
 
 body {
@@ -70,6 +79,17 @@ textarea {
   background: transparent;
   color: inherit;
   box-sizing: border-box;
+}
+
+select {
+  color-scheme: light dark;
+  background-color: var(--select-background);
+  color: var(--select-foreground);
+}
+
+select option {
+  background-color: var(--select-background);
+  color: var(--select-foreground);
 }
 
 input.wide,
