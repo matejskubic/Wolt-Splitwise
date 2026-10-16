@@ -13,7 +13,7 @@ Order delivered: 12/10/2026, 12:07
 Order again
 View venue info
 Items
-Matej Skubic
+Participant One
 HOST
 €12.39
 The Mustardo
@@ -24,7 +24,7 @@ Zamenjamo krompirček za sladkega?: Ne, hvala
 Želiš cheddar zamenjati za nacho sir?: Ne, hvala
 Želiš dvojno meso in cheddar?: Ne, hvala
 Dodamo 2x chicken strips?: Ne, hvala
-Marko Tasevski
+Participant Two
 €12.39
 The Mustardo
 12.39
@@ -34,7 +34,7 @@ Zamenjamo krompirček za sladkega?: Ne, hvala
 Želiš cheddar zamenjati za nacho sir?: Ne, hvala
 Želiš dvojno meso in cheddar?: Ne, hvala
 Dodamo 2x chicken strips?: Ne, hvala
-Ivan Batinić
+Participant Three
 €12.39
 The Nostalgija
 12.39
@@ -47,7 +47,7 @@ Dodamo 2x chicken strips?: Ne, hvala
 Dodamo omako za krompirček?: Ne, hvala
 Dodamo kaj pekočega?: Ne, hvala
 Dodamo zelenjavo?: Ne, hvala
-Kris Stopar
+Participant Four
 €12.39
 The Plain
 12.39
@@ -56,7 +56,7 @@ The Plain
 Zamenjamo krompirček za sladkega?: Ne, hvala
 Želiš dvojno meso in cheddar?: Ne, hvala
 Dodamo 2x chicken strips?: Ne, hvala
-Tomi Bandelj
+Participant Five
 €12.39
 The Classic
 12.39
@@ -69,7 +69,7 @@ Dodamo 2x chicken strips?: Ne, hvala
 Dodamo omako za krompirček?: Ne, hvala
 Dodamo kaj pekočega?: Ne, hvala
 Dodamo zelenjavo?: Ne, hvala
-Vale
+Participant Six
 €14.68
 The Classic
 14.68

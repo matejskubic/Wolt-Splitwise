@@ -12,12 +12,12 @@ describe('applyCheckoutDiscounts', () => {
   it('assigns each participant the discount seen on the checkout page', () => {
     const result = applyCheckoutDiscounts(history, checkout);
     expect(result.order.participants.map(({ name, cents }) => [name, cents])).toEqual([
-      ['Matej Skubic', 867],
-      ['Marko Tasevski', 867],
-      ['Ivan Batinić', 867],
-      ['Kris Stopar', 1239],
-      ['Tomi Bandelj', 867],
-      ['Vale', 1096],
+      ['Participant One', 867],
+      ['Participant Two', 867],
+      ['Participant Three', 867],
+      ['Participant Four', 1239],
+      ['Participant Five', 867],
+      ['Participant Six', 1096],
     ]);
     expect(result.snapshotCents).toBe(1860);
     expect(result.proportionalCents).toBe(0);

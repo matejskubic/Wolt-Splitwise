@@ -7,36 +7,36 @@ Host pays for everyone
 Not ready: 0
 
 Ready: 6
-Matej Skubic
+Participant One
 Host
 Ready
 1 item
 €8.67
 12.39
-Marko Tasevski
+Participant Two
 Ready
 1 item
 €8.67
 12.39
 
-Ivan Batinić
+Participant Three
 Ready
 1 item
 €8.67
 12.39
 
-Kris Stopar
+Participant Four
 Ready
 1 item
 €12.39
 
-Tomi Bandelj
+Participant Five
 Ready
 1 item
 €8.67
 12.39
 
-Vale
+Participant Six
 Ready
 1 item
 €10.96

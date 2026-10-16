@@ -33,30 +33,30 @@ describe('money', () => {
 
 describe('matchMember', () => {
   const members: SplitwiseMember[] = [
-    { id: 1, first_name: 'Matej', last_name: 'Skubic' },
-    { id: 2, first_name: 'Ivan', last_name: 'Batinic' },
-    { id: 3, first_name: 'Valentina', last_name: 'Novak' },
-    { id: 4, first_name: 'Tomi', last_name: null },
-    { id: 5, first_name: 'Kris', last_name: 'Stopar' },
-    { id: 6, first_name: 'Kris', last_name: 'Other' },
+    { id: 1, first_name: 'Participant', last_name: 'One' },
+    { id: 2, first_name: 'Participant', last_name: 'Zed' },
+    { id: 3, first_name: 'Saved', last_name: 'Member' },
+    { id: 4, first_name: 'Solo', last_name: null },
+    { id: 5, first_name: 'Ambiguous', last_name: 'One' },
+    { id: 6, first_name: 'Ambiguous', last_name: 'Two' },
   ];
 
   it('matches full names ignoring diacritics', () => {
-    expect(matchMember('Ivan Batinić', members)).toBe(2);
-    expect(matchMember('Kris Stopar', members)).toBe(5);
+    expect(matchMember('Participant Žed', members)).toBe(2);
+    expect(matchMember('Participant One', members)).toBe(1);
   });
 
   it('matches by first name when the member has no last name', () => {
-    expect(matchMember('Tomi Bandelj', members)).toBe(4);
+    expect(matchMember('Solo Example', members)).toBe(4);
   });
 
   it('leaves ambiguous or unknown names unmatched', () => {
-    expect(matchMember('Kris', members)).toBeUndefined();
-    expect(matchMember('Marko Tasevski', members)).toBeUndefined();
+    expect(matchMember('Ambiguous', members)).toBeUndefined();
+    expect(matchMember('Unknown Person', members)).toBeUndefined();
   });
 
   it('prefers remembered mappings', () => {
-    expect(matchMember('Vale', members, { vale: 3 })).toBe(3);
+    expect(matchMember('Participant Six', members, { 'participant six': 3 })).toBe(3);
   });
 });
 

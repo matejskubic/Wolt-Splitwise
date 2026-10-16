@@ -10,12 +10,12 @@ describe('parseWoltCheckout', () => {
     expect(order.venue).toBe('The BRGR');
     expect(order.currency).toBe('EUR');
     expect(order.participants.map(({ name, cents, isHost }) => ({ name, cents, isHost }))).toEqual([
-      { name: 'Matej Skubic', cents: 867, isHost: true },
-      { name: 'Marko Tasevski', cents: 867, isHost: false },
-      { name: 'Ivan Batinić', cents: 867, isHost: false },
-      { name: 'Kris Stopar', cents: 1239, isHost: false },
-      { name: 'Tomi Bandelj', cents: 867, isHost: false },
-      { name: 'Vale', cents: 1096, isHost: false },
+      { name: 'Participant One', cents: 867, isHost: true },
+      { name: 'Participant Two', cents: 867, isHost: false },
+      { name: 'Participant Three', cents: 867, isHost: false },
+      { name: 'Participant Four', cents: 1239, isHost: false },
+      { name: 'Participant Five', cents: 867, isHost: false },
+      { name: 'Participant Six', cents: 1096, isHost: false },
     ]);
     expect(order.participants.every((p) => p.status === 'Ready' && p.itemCount === 1)).toBe(true);
     expect(order.fees).toEqual([]);
@@ -28,12 +28,12 @@ describe('parseWoltCheckout', () => {
       'Not ready: 0',
       'Ready: 2',
       'MS',
-      'Matej Skubic HOST',
+      'Participant One HOST',
       'Ready • 2 items',
       '17,34 €',
       '24,78',
       'V',
-      'Vale',
+      'Participant Six',
       'Ready • 1 item',
       '10,96 €',
       'Lock order together',
@@ -48,8 +48,8 @@ describe('parseWoltCheckout', () => {
     ].join('\n');
     const order = parseWoltCheckout(text);
     expect(order.participants).toEqual([
-      { name: 'Matej Skubic', isHost: true, status: 'Ready', itemCount: 2, cents: 1734, originalCents: 2478 },
-      { name: 'Vale', isHost: false, status: 'Ready', itemCount: 1, cents: 1096, originalCents: 1096 },
+      { name: 'Participant One', isHost: true, status: 'Ready', itemCount: 2, cents: 1734, originalCents: 2478 },
+      { name: 'Participant Six', isHost: false, status: 'Ready', itemCount: 1, cents: 1096, originalCents: 1096 },
     ]);
     expect(order.fees).toEqual([
       { label: 'Delivery', cents: 199 },
@@ -82,8 +82,8 @@ describe('parseWoltCheckout', () => {
     const order = parseWoltCheckout(rest.join('\n'), title);
     expect(order.venue).toBe('The BRGR');
     expect(order.participants.map(({ name, cents, originalCents, isHost }) => ({ name, cents, originalCents, isHost }))).toEqual([
-      { name: 'Matej Skubic', cents: 867, originalCents: 1239, isHost: true },
-      { name: 'Miha Boh', cents: 967, originalCents: 1339, isHost: false },
+      { name: 'Participant One', cents: 867, originalCents: 1239, isHost: true },
+      { name: 'Participant Seven', cents: 967, originalCents: 1339, isHost: false },
     ]);
     expect(order.fees).toEqual([{ label: 'Service fee', cents: 118 }]);
     expect(order.discounts).toEqual([{ label: 'Applied offers', cents: -744 }]);
@@ -98,26 +98,26 @@ describe('parseWoltHistory', () => {
     const order = parseWoltHistory(history);
     expect(order).toMatchObject({ source: 'history', venue: 'The BRGR', orderId: '6acca6a76b439397dec49874', placedAt: '12/10/2026, 11:21', currency: 'EUR', totalCents: 6010 });
     expect(order.participants.map(({ name, cents, isHost }) => [name, cents, isHost])).toEqual([
-      ['Matej Skubic', 1239, true],
-      ['Marko Tasevski', 1239, false],
-      ['Ivan Batinić', 1239, false],
-      ['Kris Stopar', 1239, false],
-      ['Tomi Bandelj', 1239, false],
-      ['Vale', 1468, false],
+      ['Participant One', 1239, true],
+      ['Participant Two', 1239, false],
+      ['Participant Three', 1239, false],
+      ['Participant Four', 1239, false],
+      ['Participant Five', 1239, false],
+      ['Participant Six', 1468, false],
     ]);
     expect(order.fees).toEqual([{ label: 'Service fee', cents: 207 }]);
     expect(order.discounts).toEqual([{ label: 'Discounts', cents: -1860 }]);
   });
 
   it('stops at the last item price when there are no add-ons', () => {
-    const order = parseWoltHistory(['Items', 'Ana', '€9.00', 'Burger', '9.00', '×1', '9.00', 'Service fee', '1.00', 'Total sum', '€10.00'].join('\n'));
-    expect(order.participants).toEqual([{ name: 'Ana', isHost: false, status: 'Ready', cents: 900, originalCents: 900 }]);
+    const order = parseWoltHistory(['Items', 'Participant One', '€9.00', 'Burger', '9.00', '×1', '9.00', 'Service fee', '1.00', 'Total sum', '€10.00'].join('\n'));
+    expect(order.participants).toEqual([{ name: 'Participant One', isHost: false, status: 'Ready', cents: 900, originalCents: 900 }]);
     expect(order.fees).toEqual([{ label: 'Service fee', cents: 100 }]);
   });
 
   it('captures short uppercase participant names when followed by a participant price', () => {
-    const order = parseWoltHistory(['Items', 'TT', '€10.50', 'Tortilija Greek', '10.50', '×1', '10.50', 'Anže Krpič', '€10.50', 'Tortilija Greek', '10.50', '×1', '10.50', 'Service fee', '2.02', 'Total sum', '€23.02'].join('\n'));
-    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([['TT', 1050], ['Anže Krpič', 1050]]);
+    const order = parseWoltHistory(['Items', 'XYZ', '€10.50', 'Tortilija Greek', '10.50', '×1', '10.50', 'Participant Eight', '€10.50', 'Tortilija Greek', '10.50', '×1', '10.50', 'Service fee', '2.02', 'Total sum', '€23.02'].join('\n'));
+    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([['XYZ', 1050], ['Participant Eight', 1050]]);
     expect(order.totalCents).toBe(2302);
   });
 
@@ -126,15 +126,15 @@ describe('parseWoltHistory', () => {
       'Nazaj na status naročila', 'Greenbox', 'Naročilo je oddano: 16. 10. 26, 11:05',
       'Dostava', 'Naroči skupaj', 'V pripravi', 'Tvoja številka naročila: 103',
       'ID naročila: 6ad1e8e18553ec271b4ace06', 'Artikli',
-      'TT', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
-      'Anže Krpič', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
-      'Bernarda Podhraški', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
+      'XYZ', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
+      'Participant Eight', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
+      'Participant Nine', '10,50 €', 'Tortilija Greek', '10,50', '×1', '10,50',
       'DostavaWork\t0,00', 'Strošek storitve', '2,02', 'Skupni znesek', '33,52 €',
     ].join('\n');
     const order = parseWoltHistory(text);
     expect(order).toMatchObject({ venue: 'Greenbox', orderId: '6ad1e8e18553ec271b4ace06', placedAt: '16. 10. 26, 11:05', currency: 'EUR', totalCents: 3352 });
     expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([
-      ['TT', 1050], ['Anže Krpič', 1050], ['Bernarda Podhraški', 1050],
+      ['XYZ', 1050], ['Participant Eight', 1050], ['Participant Nine', 1050],
     ]);
     expect(order.fees).toEqual([{ label: 'Strošek storitve', cents: 202 }]);
   });
@@ -147,7 +147,7 @@ describe('parseWoltHistory', () => {
       ['[data-test-id="TotalRowCheckoutTotal"]', node('Summe\n33,52 €')],
     ]);
     const collections = new Map<string, HTMLElement[]>([
-      ['[data-test-id="ParticipantNameLine"]', [node('TT\n10,50 €'), node('Anže Krpič\n10,50 €')]],
+      ['[data-test-id="ParticipantNameLine"]', [node('XYZ\n10,50 €'), node('Participant Eight\n10,50 €')]],
       ['[data-test-id="OrderDetailsWoltServiceFee"]', [node('Gebühr\n2,02')]],
       ['[data-test-id="RowWithSubItems-MainRow"]', [node('Zustellung\n0,00')]],
       ['[data-test-id^="OrderDetailsWoltDiscount"]', []],
@@ -160,7 +160,7 @@ describe('parseWoltHistory', () => {
 
     const order = parseWoltHistoryReceipt(receipt);
     expect(order).toMatchObject({ venue: 'Greenbox', orderId: '6ad1e8e18553ec271b4ace06', totalCents: 3352, currency: 'EUR' });
-    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([['TT', 1050], ['Anže Krpič', 1050]]);
+    expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([['XYZ', 1050], ['Participant Eight', 1050]]);
     expect(order.fees).toEqual([{ label: 'Service fee', cents: 202 }]);
   });
 });

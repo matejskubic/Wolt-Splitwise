@@ -6,10 +6,10 @@ const receiptText = [
   'Order placed: October 13, 2026 11:05 AM',
   'Order ID: 6acdf45d03dc0509834fba40',
   'Items',
-  'Matej Skubic', 'Host', '\u20ac11.10', 'Thai Spicy Fried rice', '11.10', '\u00d71', '11.10',
+  'Participant One', 'Host', '\u20ac11.10', 'Thai Spicy Fried rice', '11.10', '\u00d71', '11.10',
   'Bla\u017e Bani\u010d', '\u20ac10.00', 'Tajske perutni\u010dke', '5.00', '\u00d72', '10.00',
-  'Darko Bashukoski', '\u20ac11.10', 'Pad Thai', '11.10', '\u00d71', '11.10',
-  'Kris Stopar', '\u20ac14.10', 'Thai Spicy Fried rice', '11.10', '\u00d71', '11.10',
+  'Participant Ten', '\u20ac11.10', 'Pad Thai', '11.10', '\u00d71', '11.10',
+  'Participant Four', '\u20ac14.10', 'Thai Spicy Fried rice', '11.10', '\u00d71', '11.10',
   'Gyoza meat 3 pcs', '3.00', '\u00d71', '3.00',
   'DeliveryWork\t0.00', 'Service fee', '2.07', 'Total sum', '\u20ac48.37',
 ].join('\n');
@@ -56,7 +56,7 @@ describe('tracking receipt', () => {
     expect(click).toHaveBeenCalledOnce();
     expect(order).toMatchObject({ source: 'history', orderId: '6acdf45d03dc0509834fba40', venue: 'Roza Slon Be\u017eigrad', totalCents: 4837, url });
     expect(order.participants.map(({ name, cents }) => [name, cents])).toEqual([
-      ['Matej Skubic', 1110], ['Bla\u017e Bani\u010d', 1000], ['Darko Bashukoski', 1110], ['Kris Stopar', 1410],
+      ['Participant One', 1110], ['Bla\u017e Bani\u010d', 1000], ['Participant Ten', 1110], ['Participant Four', 1410],
     ]);
     expect(order.fees).toEqual([{ label: 'Service fee', cents: 207 }]);
     expect(order.discounts).toEqual([]);
